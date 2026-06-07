@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CAW x402 Operator Demo Console</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #172033;
+        --muted: #667085;
+        --line: #d7dde8;
+        --paper: #fafaf7;
+        --panel: #ffffff;
+        --blue: #2457d6;
+        --green: #16845b;
+        --amber: #a86500;
+        --red: #b42318;
+        --violet: #6842c5;
+        --shadow: 0 1px 2px rgba(23, 32, 51, 0.08), 0 12px 32px rgba(23, 32, 51, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          sans-serif;
+        line-height: 1.45;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        min-height: 38px;
+        border: 1px solid var(--ink);
+        border-radius: 7px;
+        background: var(--ink);
+        color: white;
+        cursor: pointer;
+        padding: 0 12px;
+        transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+      }
+
+      button:hover {
+        box-shadow: 0 4px 14px rgba(23, 32, 51, 0.18);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      button.secondary {
+        background: white;
+        color: var(--ink);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+        box-shadow: none;
+      }
+
+      input {
+        width: 100%;
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: white;
+        color: var(--ink);
+        padding: 0 10px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 190px;
+        resize: vertical;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        background: #f8fafc;
+        color: #263142;
+        padding: 10px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      input:focus,
+      button:focus,
+      textarea:focus {
+        outline: 2px solid rgba(36, 87, 214, 0.35);
+        outline-offset: 2px;
+      }
+
+      .shell {
+        width: min(1320px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 24px 0 32px;
+      }
+
+      .topbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      .brand {
+        display: grid;
+        gap: 4px;
+      }
+
+      .eyebrow {
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: clamp(30px, 4vw, 54px);
+        font-weight: 700;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 16px;
+        line-height: 1.2;
+      }
+
+      h3 {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 30px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: white;
+        padding: 0 10px;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--amber);
+      }
+
+      .dot.ok {
+        background: var(--green);
+      }
+
+      .dot.bad {
+        background: var(--red);
+      }
+
+      .workspace {
+        display: grid;
+        grid-template-columns: 340px minmax(0, 1fr) 360px;
+        gap: 16px;
+        align-items: start;
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        padding: 14px;
+      }
+
+      .panel-body {
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      label {
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .command {
+        display: grid;
+        gap: 6px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+      }
+
+      .command code {
+        display: block;
+        overflow-wrap: anywhere;
+        border: 1px dashed #b9c0cc;
+        border-radius: 7px;
+        background: #f4f6f8;
+        padding: 10px;
+        color: #263142;
+        font-size: 12px;
+      }
+
+      .invocation {
+        display: grid;
+        gap: 8px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+      }
+
+      .adapter-status {
+        display: grid;
+        gap: 4px;
+        border: 1px solid #ead59b;
+        border-radius: 7px;
+        background: #fff8e6;
+        padding: 9px;
+        color: #694800;
+        font-size: 12px;
+      }
+
+      .stage-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .stage {
+        min-height: 150px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fbfcff;
+        padding: 12px;
+      }
+
+      .stage strong {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 15px;
+      }
+
+      .kv {
+        display: grid;
+        gap: 7px;
+      }
+
+      .kv div {
+        display: grid;
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 8px;
+        align-items: baseline;
+        min-height: 22px;
+      }
+
+      .kv span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .kv code,
+      .mono {
+        overflow-wrap: anywhere;
+        color: #27364f;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      .quote-amount {
+        color: var(--green);
+        font-size: 34px;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .flow {
+        display: grid;
+        gap: 8px;
+      }
+
+      .flow-step {
+        display: grid;
+        grid-template-columns: 26px minmax(0, 1fr);
+        gap: 10px;
+        align-items: start;
+        min-height: 52px;
+      }
+
+      .num {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .flow-step.active .num {
+        border-color: var(--blue);
+        background: var(--blue);
+        color: white;
+      }
+
+      .flow-step.done .num {
+        border-color: var(--green);
+        background: var(--green);
+        color: white;
+      }
+
+      .flow-step p {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .log {
+        display: grid;
+        gap: 8px;
+        max-height: 320px;
+        overflow: auto;
+      }
+
+      .log-row {
+        border-left: 3px solid var(--line);
+        padding: 2px 0 2px 9px;
+      }
+
+      .log-row.ok {
+        border-color: var(--green);
+      }
+
+      .log-row.warn {
+        border-color: var(--amber);
+      }
+
+      .log-row.error {
+        border-color: var(--red);
+      }
+
+      .log-row time {
+        display: block;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .log-row code {
+        overflow-wrap: anywhere;
+        font-size: 12px;
+      }
+
+      .manifest {
+        max-height: 240px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #111827;
+        color: #eef2ff;
+        padding: 12px;
+        white-space: pre-wrap;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+
+      .empty {
+        color: var(--muted);
+      }
+
+      .risk-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 7px;
+      }
+
+      .risk-strip span {
+        min-height: 8px;
+        border-radius: 999px;
+        background: var(--line);
+      }
+
+      .risk-strip span:nth-child(1) {
+        background: var(--green);
+      }
+
+      .risk-strip span:nth-child(2) {
+        background: var(--blue);
+      }
+
+      .risk-strip span:nth-child(3) {
+        background: var(--amber);
+      }
+
+      .risk-strip span:nth-child(4) {
+        background: var(--red);
+      }
+
+      @media (max-width: 1100px) {
+        .workspace {
+          grid-template-columns: 320px minmax(0, 1fr);
+        }
+
+        .right-rail {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 760px) {
+        .shell {
+          width: min(100vw - 20px, 680px);
+          padding-top: 14px;
+        }
+
+        .topbar,
+        .workspace,
+        .stage-grid,
+        .actions {
+          grid-template-columns: 1fr;
+        }
+
+        .topbar {
+          align-items: start;
+        }
+
+        .status-pill {
+          width: fit-content;
+          white-space: normal;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="topbar" aria-label="Demo status">
+        <div class="brand">
+          <div class="eyebrow">Operator demo console</div>
+          <h1>CAW x402 Agent Handoff</h1>
+        </div>
+        <div class="status-pill" id="providerStatus"><span class="dot"></span><span>Provider not checked</span></div>
+      </section>
+
+      <section class="workspace">
+        <aside class="panel">
+          <div class="panel-header">
+            <h2>Request</h2>
+            <h3>Operator</h3>
+          </div>
+          <div class="panel-body">
+            <div class="field">
+              <label for="apiBase">Provider origin</label>
+              <input id="apiBase" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="address">Risk report address</label>
+              <input id="address" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="budget">Max price USDC</label>
+              <input id="budget" inputmode="decimal" autocomplete="off" />
+            </div>
+            <div class="actions">
+              <button id="manifestButton" type="button">Manifest</button>
+              <button id="quoteButton" type="button">Quote</button>
+              <button id="statusButton" class="secondary" type="button">Status</button>
+              <button id="resetButton" class="secondary" type="button">Reset</button>
+            </div>
+            <div class="command">
+              <label>Terminal precheck</label>
+              <code id="commandText"></code>
+            </div>
+            <div class="invocation">
+              <label for="agentPrompt">Agent invocation</label>
+              <textarea id="agentPrompt" spellcheck="false"></textarea>
+              <button id="copyPromptButton" type="button">Copy Agent Prompt</button>
+              <div class="adapter-status">
+                <strong>SDK adapter not wired</strong>
+                <span>Browser click-to-Codex requires a backend adapter and explicit operator approval gates.</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <section class="panel">
+          <div class="panel-header">
+            <h2>Commerce Checkpoint</h2>
+            <h3>Quote first</h3>
+          </div>
+          <div class="panel-body">
+            <div class="stage-grid">
+              <article class="stage">
+                <strong>Provider</strong>
+                <div class="kv" id="healthView">
+                  <p class="empty">Run Manifest or Quote.</p>
+                </div>
+              </article>
+              <article class="stage">
+                <strong>x402 Quote</strong>
+                <div class="kv" id="quoteView">
+                  <p class="empty">No quote loaded.</p>
+                </div>
+              </article>
+              <article class="stage">
+                <strong>Provider Status</strong>
+                <div class="kv" id="orderView">
+                  <p class="empty">No fingerprint checked.</p>
+                </div>
+              </article>
+              <article class="stage">
+                <strong>CAW Pact Plan</strong>
+                <div class="kv" id="pactView">
+                  <p class="empty">Waiting for a matching quote.</p>
+                </div>
+              </article>
+            </div>
+
+            <div>
+              <h3>Provider Manifest</h3>
+              <pre class="manifest" id="manifestView">GET /llms.txt</pre>
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel right-rail">
+          <div class="panel-header">
+            <h2>Timeline</h2>
+            <h3>Audit shape</h3>
+          </div>
+          <div class="panel-body">
+            <div class="risk-strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+            <div class="flow" id="flowView"></div>
+            <div class="log" id="logView"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script>
+      const state = {
+        health: null,
+        manifest: "",
+        quote: null,
+        requirement: null,
+        fingerprint: "",
+        order: null
+      };
+
+      const defaultAddress = "0x0000000000000000000000000000000000000001";
+      const apiBase = document.getElementById("apiBase");
+      const addressInput = document.getElementById("address");
+      const budgetInput = document.getElementById("budget");
+      const providerStatus = document.getElementById("providerStatus");
+      const commandText = document.getElementById("commandText");
+      const agentPrompt = document.getElementById("agentPrompt");
+      const healthView = document.getElementById("healthView");
+      const quoteView = document.getElementById("quoteView");
+      const orderView = document.getElementById("orderView");
+      const pactView = document.getElementById("pactView");
+      const manifestView = document.getElementById("manifestView");
+      const flowView = document.getElementById("flowView");
+      const logView = document.getElementById("logView");
+
+      apiBase.value = window.location.origin;
+      addressInput.value = defaultAddress;
+      budgetInput.value = "0.005";
+
+      document.getElementById("manifestButton").addEventListener("click", loadManifest);
+      document.getElementById("quoteButton").addEventListener("click", loadQuote);
+      document.getElementById("statusButton").addEventListener("click", loadStatus);
+      document.getElementById("resetButton").addEventListener("click", resetDemo);
+      document.getElementById("copyPromptButton").addEventListener("click", copyAgentPrompt);
+      [apiBase, addressInput, budgetInput].forEach((input) => input.addEventListener("input", updateCommand));
+
+      updateCommand();
+      renderFlow();
+
+      async function loadManifest() {
+        try {
+          const health = await fetchJson("/health");
+          const manifest = await fetchText("/llms.txt");
+          state.health = health;
+          state.manifest = manifest;
+          setProvider("ok", "Provider online");
+          addLog("ok", "Provider manifest loaded");
+          render();
+        } catch (error) {
+          setProvider("bad", "Provider unavailable");
+          addLog("error", error.message);
+        }
+      }
+
+      async function loadQuote() {
+        try {
+          if (!state.manifest) await loadManifest();
+          const url = riskReportUrl();
+          const response = await fetch(url, { headers: { accept: "application/json" } });
+          if (response.status !== 402) {
+            throw new Error(`Expected HTTP 402 quote, got ${response.status}`);
+          }
+          const body = await response.json();
+          const requirement = decodePaymentRequired(response.headers.get("payment-required"));
+          const accept = requirement.accepts && requirement.accepts[0];
+          if (!accept) throw new Error("Quote did not include accepted payment options");
+
+          state.requirement = requirement;
+          state.quote = summarizeQuote(requirement, accept, body);
+          state.fingerprint = await requestFingerprint(addressInput.value, state.quote);
+          state.order = null;
+          addLog("ok", `Quote loaded for ${state.quote.amount} ${state.quote.token}`);
+          render();
+          await loadStatus();
+        } catch (error) {
+          addLog("error", error.message);
+          render();
+        }
+      }
+
+      async function loadStatus() {
+        try {
+          if (!state.fingerprint) {
+            if (!state.quote) await loadQuote();
+            if (!state.fingerprint) throw new Error("No request fingerprint available");
+          }
+          state.order = await fetchJson(`/orders/status?fingerprint=${encodeURIComponent(state.fingerprint)}`);
+          addLog(state.order.status === "not_found" ? "warn" : "ok", `Status: ${state.order.status}`);
+          render();
+        } catch (error) {
+          addLog("error", error.message);
+          render();
+        }
+      }
+
+      function resetDemo() {
+        state.health = null;
+        state.manifest = "";
+        state.quote = null;
+        state.requirement = null;
+        state.fingerprint = "";
+        state.order = null;
+        logView.innerHTML = "";
+        setProvider("", "Provider not checked");
+        render();
+      }
+
+      async function fetchJson(path) {
+        const response = await fetch(`${cleanBase()}${path}`, { headers: { accept: "application/json" } });
+        if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
+        return response.json();
+      }
+
+      async function fetchText(path) {
+        const response = await fetch(`${cleanBase()}${path}`, { headers: { accept: "text/plain" } });
+        if (!response.ok) throw new Error(`${path} returned HTTP ${response.status}`);
+        return response.text();
+      }
+
+      function riskReportUrl() {
+        return `${cleanBase()}/risk-report?address=${encodeURIComponent(addressInput.value.trim())}`;
+      }
+
+      function cleanBase() {
+        return apiBase.value.trim().replace(/\/+$/, "");
+      }
+
+      function decodePaymentRequired(header) {
+        if (!header) throw new Error("PAYMENT-REQUIRED header missing");
+        const normalized = header.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = normalized.padEnd(normalized.length + ((4 - (normalized.length % 4)) % 4), "=");
+        return JSON.parse(atob(padded));
+      }
+
+      function summarizeQuote(requirement, accept, body) {
+        return {
+          x402Version: requirement.x402Version,
+          scheme: accept.scheme,
+          network: accept.network,
+          payTo: accept.payTo,
+          amount: String(accept.extra && accept.extra.priceUsdc ? accept.extra.priceUsdc : accept.amount),
+          token: String(accept.extra && accept.extra.tokenSymbol ? accept.extra.tokenSymbol : "USDC"),
+          asset: accept.asset || "",
+          resource: "/risk-report",
+          resourceUrl: requirement.resource && requirement.resource.url ? requirement.resource.url : "",
+          unpaidMessage: body.message || body.error || "payment_required"
+        };
+      }
+
+      async function requestFingerprint(address, quote) {
+        const input = {
+          method: "GET",
+          path: "/risk-report",
+          address: address.trim().toLowerCase(),
+          priceUsdc: quote.amount,
+          network: quote.network,
+          tokenSymbol: quote.token,
+          payTo: normalizePayTo(quote.payTo)
+        };
+        const bytes = new TextEncoder().encode(JSON.stringify(input));
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        return `sha256:${Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+      }
+
+      function normalizePayTo(payTo) {
+        return /^0x[a-fA-F0-9]{40}$/.test(payTo) ? payTo.toLowerCase() : payTo;
+      }
+
+      function updateCommand() {
+        commandText.textContent = `npm run agents:precheck -- --address ${addressInput.value.trim()} --api ${cleanBase()}/risk-report --max-price-usdc ${budgetInput.value.trim()}`;
+        agentPrompt.value = buildAgentPrompt();
+      }
+
+      async function copyAgentPrompt() {
+        try {
+          await navigator.clipboard.writeText(agentPrompt.value);
+          addLog("ok", "Agent prompt copied");
+        } catch (error) {
+          agentPrompt.select();
+          addLog("warn", "Clipboard unavailable; prompt selected");
+        }
+      }
+
+      function buildAgentPrompt() {
+        return [
+          "** Your task **",
+          "Buy the requested x402 paid resource and return the delivered result.",
+          "",
+          "Resource:",
+          `- Provider manifest: ${cleanBase()}/llms.txt`,
+          `- Paid resource: ${cleanBase()}/risk-report?address=${addressInput.value.trim()}`,
+          "- Expected result: JSON risk report for the requested address",
+          "",
+          "** User intent / spend plan **",
+          `I want you to complete this purchase end-to-end if it passes policy. My total budget is ${budgetInput.value.trim()} USDC for this single resource purchase, and the authorization should be scoped to this task with the shortest practical CAW Pact window.`,
+          "",
+          "** Wallet authorization model **",
+          "Use the repo-local skill as the policy and execution guide:",
+          "- skills/caw-x402-purchasing",
+          "",
+          "If a CAW Pact is required, derive it from the live x402 quote and this spend plan. Show me the quote, provider status, and least-privilege Pact summary before asking me to approve anything in CAW.",
+          "",
+          "** Safety boundary **",
+          "- Do not treat the browser demo page as part of the agent workflow.",
+          "- Do not copy or assume wallet-specific endpoints from this prompt; use the CAW/x402 behavior defined by the skill and live provider manifest.",
+          "- Stop for my explicit approval before any Pact creation or payment execution.",
+          "- Do not log CAW credentials, raw payment payloads, private keys, seed phrases, or reusable payment proofs."
+        ].join("\\n");
+      }
+
+      function render() {
+        updateCommand();
+        renderHealth();
+        renderQuote();
+        renderOrder();
+        renderPact();
+        renderManifest();
+        renderFlow();
+      }
+
+      function renderHealth() {
+        if (!state.health) {
+          healthView.innerHTML = '<p class="empty">Run Manifest or Quote.</p>';
+          return;
+        }
+        healthView.innerHTML = kv([
+          ["status", state.health.status],
+          ["stack", state.health.stack],
+          ["db", state.health.db],
+          ["x402", state.health.x402]
+        ]);
+      }
+
+      function renderQuote() {
+        if (!state.quote) {
+          quoteView.innerHTML = '<p class="empty">No quote loaded.</p>';
+          return;
+        }
+        quoteView.innerHTML = `
+          <div class="quote-amount">${escapeHtml(state.quote.amount)} ${escapeHtml(state.quote.token)}</div>
+          ${kv([
+            ["network", state.quote.network],
+            ["payee", state.quote.payTo],
+            ["resource", state.quote.resource],
+            ["fingerprint", state.fingerprint || "pending"]
+          ])}
+        `;
+      }
+
+      function renderOrder() {
+        if (!state.order) {
+          orderView.innerHTML = '<p class="empty">No fingerprint checked.</p>';
+          return;
+        }
+        orderView.innerHTML = kv([
+          ["status", state.order.status],
+          ["order", state.order.orderId || "none"],
+          ["payment", state.order.paymentId || "none"],
+          ["delivery", state.order.delivery && state.order.delivery.available ? "available" : "not available"],
+          ["next", state.order.agentAdvice ? state.order.agentAdvice.nextAction : "review"]
+        ]);
+      }
+
+      function renderPact() {
+        if (!state.quote) {
+          pactView.innerHTML = '<p class="empty">Waiting for a matching quote.</p>';
+          return;
+        }
+        const budget = Number(budgetInput.value);
+        const price = Number(state.quote.amount);
+        const withinBudget = Number.isFinite(budget) && Number.isFinite(price) && price <= budget;
+        pactView.innerHTML = kv([
+          ["decision", withinBudget ? "ready for approval" : "stop: over budget"],
+          ["cap", `${budgetInput.value.trim()} USDC`],
+          ["network", state.quote.network],
+          ["token", state.quote.token],
+          ["payee", state.quote.payTo]
+        ]);
+      }
+
+      function renderManifest() {
+        manifestView.textContent = state.manifest || "GET /llms.txt";
+      }
+
+      function renderFlow() {
+        const steps = [
+          ["Manifest", Boolean(state.manifest), "Provider capability discovery"],
+          ["Quote", Boolean(state.quote), "HTTP 402 payment requirement"],
+          ["Status", Boolean(state.order), "Duplicate-payment guard"],
+          ["Approval", false, "CAW Pact requires operator approval"],
+          ["Audit", false, "Agent writes redacted evidence"]
+        ];
+        const activeIndex = Math.max(0, steps.findIndex((step) => !step[1]));
+        flowView.innerHTML = steps
+          .map(([label, done, detail], index) => {
+            const className = done ? "done" : index === activeIndex ? "active" : "";
+            return `
+              <div class="flow-step ${className}">
+                <div class="num">${index + 1}</div>
+                <div><strong>${label}</strong><p>${detail}</p></div>
+              </div>
+            `;
+          })
+          .join("");
+      }
+
+      function kv(rows) {
+        return rows
+          .map(([key, value]) => `<div><span>${escapeHtml(key)}</span><code>${escapeHtml(String(value ?? ""))}</code></div>`)
+          .join("");
+      }
+
+      function setProvider(kind, text) {
+        const dotClass = kind === "ok" ? "dot ok" : kind === "bad" ? "dot bad" : "dot";
+        providerStatus.innerHTML = `<span class="${dotClass}"></span><span>${escapeHtml(text)}</span>`;
+      }
+
+      function addLog(kind, text) {
+        const row = document.createElement("div");
+        row.className = `log-row ${kind}`;
+        row.innerHTML = `<time>${new Date().toLocaleTimeString()}</time><code>${escapeHtml(text)}</code>`;
+        logView.prepend(row);
+      }
+
+      function escapeHtml(value) {
+        return value.replace(/[&<>"']/g, (char) => ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;"
+        })[char]);
+      }
+    </script>
+  </body>
+</html>

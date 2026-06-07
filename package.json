@@ -1,0 +1,17 @@
+{
+  "name": "caw-x402-agent-commerce",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent commerce toolkit for buying x402 paid resources through Cobo Agentic Wallet.",
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../agents && npm install",
+    "backend:provider": "cd backend && npm run provider",
+    "backend:dev": "cd backend && npm run dev",
+    "agents:precheck": "cd agents && npm run consumer -- --precheck-only",
+    "agents:consumer": "cd agents && npm run consumer",
+    "skill:precheck": "node skills/caw-x402-purchasing/scripts/run-purchase-precheck.mjs",
+    "check": "cd backend && npm run check && cd ../agents && npm run check",
+    "test": "cd backend && npm run test && cd ../agents && npm run test",
+    "demo": "./scripts/demo.sh"
+  }
+}

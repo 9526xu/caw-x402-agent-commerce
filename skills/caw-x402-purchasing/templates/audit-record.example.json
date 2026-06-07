@@ -1,0 +1,70 @@
+{
+  "taskId": "purchase_<timestamp_or_uuid>",
+  "skill": "caw-x402-purchasing",
+  "paidResourceUrl": "http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001",
+  "providerManifest": {
+    "baseUrl": "http://localhost:4021",
+    "manifestPath": "/llms.txt",
+    "summary": "Example Paid Resource provider with quote, status, paid retry, and recovery capabilities."
+  },
+  "quote": {
+    "amount": "0.005",
+    "token": "USDC",
+    "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+    "payee": "Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk",
+    "resource": "/risk-report"
+  },
+  "providerStatus": {
+    "status": "payment_required",
+    "orderId": "rro_redacted_or_provider_id",
+    "paymentId": null,
+    "requestFingerprint": "sha256:example",
+    "agentAdvice": {
+      "nextAction": "submit_pact",
+      "reason": "Provider has a payment-required order; continue only after quote and policy checks pass."
+    }
+  },
+  "purchaseIntent": {
+    "method": "GET",
+    "purchaseType": "single_shot_fixed_price_json",
+    "maxBudget": {
+      "amount": "0.005",
+      "token": "USDC"
+    },
+    "constraints": {
+      "allowedPayee": "Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk",
+      "allowedNetwork": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+      "allowedToken": "USDC"
+    }
+  },
+  "duplicatePaymentGuard": {
+    "decision": "continue",
+    "evidence": ["provider_status_checked", "no_prior_agent_audit", "no_known_caw_or_chain_payment"]
+  },
+  "cawPact": {
+    "status": "not_created",
+    "pactId": null,
+    "credential": "not_recorded"
+  },
+  "payment": {
+    "status": "not_attempted",
+    "paymentId": null,
+    "paymentProof": "not_recorded"
+  },
+  "delivery": {
+    "status": "not_attempted",
+    "hash": null,
+    "validation": "not_run"
+  },
+  "redaction": {
+    "forbiddenFieldsOmitted": [
+      "CAW credential",
+      "pact-scoped API key",
+      "raw payment payload",
+      "private key",
+      "seed phrase",
+      "replayable payment proof"
+    ]
+  }
+}
+
