@@ -151,21 +151,32 @@ export function createProviderApp(
     return next();
   });
 
-  if (process.env.X402_DEBUG_PAYMENTS === "1") {
-    app.use("/risk-report", async (c, next) => {
-      const paymentHeader = c.req.header("payment-signature") ?? c.req.header("x-payment");
-      const paymentPayload = paymentPayloadFromHeader(paymentHeader);
-      await next();
+  app.use("/risk-report", async (c, next) => {
+    const paymentHeader = c.req.header("payment-signature") ?? c.req.header("x-payment");
+    const paymentPayload = paymentPayloadFromHeader(paymentHeader);
+    await next();
+    const paymentRequiredError = paymentRequiredErrorFromHeader(c.res.headers.get("payment-required"));
+
+    if (process.env.X402_DEBUG_PAYMENTS === "1") {
       console.info("[x402] risk-report payment request", {
         hasPaymentSignature: Boolean(paymentHeader),
         payload: paymentPayload ? summarizePaymentPayload(paymentPayload) : undefined,
         responseStatus: c.res.status,
-        paymentRequiredError: paymentRequiredErrorFromHeader(c.res.headers.get("payment-required")),
+        paymentRequiredError,
         hasPaymentRequired: Boolean(c.res.headers.get("payment-required")),
         hasPaymentResponse: Boolean(c.res.headers.get("payment-response"))
       });
-    });
-  }
+    }
+
+    if (paymentHeader && c.res.status === 402 && paymentRequiredError) {
+      c.res = paymentFailureResponse({
+        response: c.res,
+        error: paymentRequiredError,
+        payload: paymentPayload,
+        requestFingerprint: c.res.headers.get("x-request-fingerprint")
+      });
+    }
+  });
 
   app.use("/risk-report", createX402PaymentMiddleware(config, store, options));
 
@@ -213,6 +224,78 @@ function paymentRequiredErrorFromHeader(header: string | null): string | undefin
   } catch {
     return "unreadable-payment-required-header";
   }
+}
+
+function paymentFailureResponse(input: {
+  response: Response;
+  error: string;
+  payload: ReturnType<typeof paymentPayloadFromHeader>;
+  requestFingerprint: string | null;
+}): Response {
+  const headers = new Headers(input.response.headers);
+  headers.set("content-type", "application/json");
+
+  return new Response(
+    JSON.stringify(
+      {
+        error: "x402_payment_verification_failed",
+        x402Error: input.error,
+        requestFingerprint: input.requestFingerprint,
+        payment: input.payload ? summarizePaymentPayload(input.payload) : undefined,
+        agentAdvice: paymentFailureAdvice(input.error, input.payload)
+      },
+      null,
+      2
+    ),
+    { status: 402, headers }
+  );
+}
+
+function paymentFailureAdvice(error: string, payload: ReturnType<typeof paymentPayloadFromHeader>) {
+  if (error === "transaction_simulation_failed") {
+    return {
+      nextAction: "stop_for_review",
+      reason:
+        "The Facilitator could not simulate the payment transaction, so the Provider cannot verify or settle it.",
+      likelyCause: payload?.accepted?.network?.startsWith("solana:")
+        ? "For Solana exact payments, this commonly means the Provider payee has no token account for the quoted asset/mint, or that token account is invalid."
+        : "The quoted payment transaction is not currently executable on the target network.",
+      checks: [
+        "Run npm run skill:precheck and inspect recipientReadiness.",
+        "For Solana, create the Provider payee token account for the quoted asset/mint before creating a new Pact.",
+        "Do not retry payment until recipient readiness passes."
+      ]
+    };
+  }
+
+  if (error === "No matching payment requirements") {
+    return {
+      nextAction: "restart_from_fresh_quote",
+      reason: "The submitted payment proof does not match the current x402 requirements.",
+      likelyCause: "The proof may have been generated for a different payee, asset, amount, network, resource, or quote.",
+      checks: [
+        "Fetch a fresh quote.",
+        "Compare amount, asset, network, payee, and resource.",
+        "Do not reuse old payment proof or old Pact details after quote changes."
+      ]
+    };
+  }
+
+  if (error === "Payment required") {
+    return {
+      nextAction: "submit_payment",
+      reason: "No payment proof was accepted for this request.",
+      likelyCause: "The request was unpaid, or the payment header was missing/unreadable.",
+      checks: ["Run quote/precheck before Pact creation.", "Submit payment only after explicit operator approval."]
+    };
+  }
+
+  return {
+    nextAction: "stop_for_review",
+    reason: "The x402 payment proof was not accepted.",
+    likelyCause: error,
+    checks: ["Inspect Provider X402_DEBUG_PAYMENTS logs.", "Do not issue a duplicate payment until CAW tx status is checked."]
+  };
 }
 
 function summarizePaymentPayload(payload: ReturnType<typeof paymentPayloadFromHeader>) {

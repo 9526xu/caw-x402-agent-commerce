@@ -429,6 +429,7 @@ sqlite3 data/risk-report-demo.sqlite 'select id, order_id, response_hash, delive
 | Provider 启动失败 | `X402_NETWORK` 是否与注册 scheme 匹配；facilitator 是否支持该 network |
 | `caw fetch --dry-run` 没有 payment option | network / asset / amount filter 是否过窄 |
 | `token_not_mapped` | CAW x402 adapter 是否支持该 chain/token |
+| `transaction_simulation_failed` / `InvalidAccountData` | Solana Provider payee 是否已有 quoted USDC mint 的 token account；用 `npm run skill:precheck` 看 `recipientReadiness` |
 | CAW policy denial | Pact policy 的 CAW `chain_id` / `token_id` / destination / amount 是否匹配 |
 | `caw fetch` 非零退出或只输出 `{}` | 先查 CAW Pact progress、`caw tx list/get` 和 Provider status，确认是否已经付款，禁止直接重试 |
 | CAW tx `Success` 但 Provider 仍 402 | Provider 是否收到 paid retry；`X402_DEBUG_PAYMENTS=1` 下看 `hasPaymentSignature`、verify/settle failure、`Payment-Response`；不要把 CAW tx id 当 `/orders/status?paymentId` |

@@ -10,6 +10,7 @@
     "agents:precheck": "cd agents && npm run consumer -- --precheck-only",
     "agents:consumer": "cd agents && npm run consumer",
     "skill:precheck": "node skills/caw-x402-purchasing/scripts/run-purchase-precheck.mjs",
+    "skill:authorize": "node skills/caw-x402-purchasing/scripts/authorize.mjs",
     "check": "cd backend && npm run check && cd ../agents && npm run check",
     "test": "cd backend && npm run test && cd ../agents && npm run test",
     "demo": "./scripts/demo.sh"

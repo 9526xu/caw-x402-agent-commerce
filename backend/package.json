@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/provider/server.ts",
-    "provider": "tsx src/provider/server.ts",
+    "dev": "X402_DEBUG_PAYMENTS=1 tsx watch src/provider/server.ts",
+    "provider": "X402_DEBUG_PAYMENTS=1 tsx src/provider/server.ts",
     "check": "tsc --noEmit",
     "test": "vitest run"
   },

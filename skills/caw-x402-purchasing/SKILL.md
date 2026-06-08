@@ -1,13 +1,13 @@
 ---
 name: caw-x402-purchasing
-description: Use when an agent runtime needs to buy a single-shot x402 paid resource through Cobo Agentic Wallet with quote review, provider status recovery, duplicate-payment protection, redacted audit evidence, and strict fail-closed payment constraints.
+description: Use when an agent runtime needs to buy a single-shot x402 paid resource through wallet adapters such as Cobo Agentic Wallet or FluxA x402 v3, with quote review, provider status recovery, duplicate-payment protection, redacted audit evidence, and strict fail-closed payment constraints.
 ---
 
-# CAW x402 Purchasing
+# x402 Purchasing With Wallet Adapters
 
-Use this skill when a user asks Codex, Claude Code, or another agent runtime to purchase an x402 paid resource through CAW. The MVP executor is this repo's `agents/` consumer flow; `/risk-report` is the Example Paid Resource, not the whole product boundary.
+Use this skill when a user asks Codex, Claude Code, or another agent runtime to purchase an x402 paid resource. CAW Pact is the default wallet adapter; FluxA x402 v3 intent mandate is a reference adapter. The `backend/` provider is the Example Paid Resource, and `agents/` is a demo harness rather than a runtime dependency for this skill.
 
-Do not perform live CAW payment unless the user explicitly approves it in the current conversation. Default to fake facilitator or local precheck/test paths.
+Do not perform live wallet payment, Pact creation, mandate creation, or paid retry unless the user explicitly approves it in the current conversation. Default to fake facilitator or local precheck/test paths.
 
 ## User Intent Input
 
@@ -31,8 +31,8 @@ requested
 -> quoted
 -> provider_status_checked
 -> intent_planned
--> pact_submitted
--> pact_approved
+-> authorization_planned
+-> authorization_approved
 -> payment_executed
 -> delivered / delivery_recovered
 -> validated
@@ -53,14 +53,25 @@ conflict -> manual_review
 ## Required Order
 
 1. Read the provider manifest first when available: `GET /llms.txt`.
-2. Run quote/precheck before Pact submission or payment.
-3. Query provider status before Pact submission:
+2. Run quote/precheck before wallet authorization or payment.
+3. Query provider status before wallet authorization:
    - `GET /orders/status?fingerprint=<requestFingerprint>`
    - `GET /orders/status?paymentId=<x402PaymentIdentifier>` when the x402 payment identifier is available.
 4. Build a Purchase Intent from user constraints, provider manifest, quote, and status.
-5. Show the quote and Pact summary before any live CAW payment.
-6. Execute payment only after quote, policy, provider status, and CAW authorization all pass.
+5. Show the quote and wallet-authorization summary before any live wallet call.
+6. Execute payment only after quote, policy, provider status, and wallet authorization all pass.
 7. Validate delivery and write a redacted audit record.
+
+## Wallet Adapter Rules
+
+Skill scripts must remain self-contained under `skills/caw-x402-purchasing/scripts/`. Do not import from this repo's `agents/src` or `backend/src`.
+
+Supported planning adapters:
+
+- `caw`: plans a CAW Pact authorization summary and stops for user approval.
+- `fluxa-x402v3`: plans a signed intent mandate flow and stops before calling the FluxA mandate or payment endpoints.
+
+The generic flow is: paid resource -> quote/payment requirement -> spend intent -> authorization object -> user approval -> x402 payment header -> paid retry -> result or structured failure -> redacted audit.
 
 ## Provider Manifest Rules
 
@@ -76,6 +87,8 @@ For this repo's demo provider:
 
 `paymentId` means the provider-visible x402 payment identifier extension. A CAW tx record id is payment evidence, but it is not a Provider `paymentId` unless the provider explicitly maps it.
 
+For Solana quotes, the payee must have a token account for the quoted asset/mint. If the precheck reports missing recipient readiness, stop before Pact creation because Facilitator verify can fail with `transaction_simulation_failed` / `InvalidAccountData`.
+
 ## Quote And Precheck Rules
 
 Fail closed before payment if any quoted field differs from the user constraints:
@@ -84,6 +97,7 @@ Fail closed before payment if any quoted field differs from the user constraints
 - token mismatch
 - network mismatch
 - payee mismatch
+- Solana payee has no token account for the quoted asset
 - resource or method mismatch
 - manifest does not list the paid resource
 - quote changes after Pact planning
@@ -102,7 +116,7 @@ Provider order status is authoritative for provider-side recovery decisions, but
 
 ## Duplicate Payment Guard
 
-Check all available evidence before new Pact submission or payment:
+Check all available evidence before new wallet authorization or payment:
 
 - Provider order/status result.
 - Agent-side audit/state from prior attempts.
@@ -135,6 +149,8 @@ Allowed audit summaries include payment id, Pact id, redacted credential availab
 
 - `scripts/check-provider-capabilities.mjs`: read `/llms.txt` and optional `/orders/status` into a redacted JSON summary.
 - `scripts/run-purchase-precheck.mjs`: read manifest, quote, `X-Request-Fingerprint`, provider status, and policy checks into one redacted JSON summary.
+- `scripts/authorize.mjs`: run precheck and build a redacted wallet-adapter authorization plan without creating a Pact, mandate, payment, or proof.
+- `scripts/lib/`: shared quote, status, policy, authorization, error, and adapter modules for portable skill CLIs.
 - `templates/audit-record.example.json`: copy this shape when writing an agent-side audit summary.
 - `references/provider-capability-contract.md`: load when implementing or reviewing provider manifest/status behavior.
 
@@ -151,6 +167,27 @@ npm run skill:precheck -- \
   --expected-payee <allowed_payee> \
   --expected-token USDC \
   --expected-network <allowed_network>
+```
+
+Authorization plan only, no Pact/mandate/payment:
+
+```bash
+npm run skill:authorize -- \
+  --url 'http://localhost:4021/risk-report?address=<target_address>' \
+  --max-price-usdc <budget> \
+  --wallet-adapter caw \
+  --expected-payee <allowed_payee> \
+  --expected-token USDC \
+  --expected-network <allowed_network>
+```
+
+FluxA x402 v3 authorization plan only, no mandate/payment:
+
+```bash
+npm run skill:authorize -- \
+  --url 'https://fluxa-x402-api.gmlgtm.workers.dev/polymarket_recommendations_last_1h' \
+  --max-price-usdc <budget> \
+  --wallet-adapter fluxa-x402v3
 ```
 
 Precheck / quote review only:

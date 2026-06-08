@@ -207,6 +207,31 @@ describe("provider unpaid risk report quote path", () => {
     expect(payments[0].status).toBe("required");
   });
 
+  it("refreshes an expired unpaid order when the same request asks for a fresh quote", async () => {
+    const app = createProviderApp(config, store, { facilitatorClient: fakeFacilitator(config).client });
+    const address = "0x0000000000000000000000000000000000000001";
+    await app.request(`/risk-report?address=${address}`, { headers: { accept: "application/json" } });
+    const fingerprint = requestFingerprint({
+      method: "GET",
+      path: "/risk-report",
+      address,
+      payment: paymentRequirementFromConfig(config)
+    });
+    const initialOrder = store.getOrderByFingerprint(fingerprint);
+    expect(initialOrder?.status).toBe("payment_required");
+    store.markExpired(initialOrder?.id ?? "");
+
+    const response = await app.request(`/risk-report?address=${address}`, { headers: { accept: "application/json" } });
+    const refreshedOrder = store.getOrderByFingerprint(fingerprint);
+    const payment = store.getPaymentsForOrder(refreshedOrder?.id ?? "")[0];
+
+    expect(response.status).toBe(402);
+    expect(response.headers.get("x-request-fingerprint")).toBe(fingerprint);
+    expect(refreshedOrder).toMatchObject({ id: initialOrder?.id, status: "payment_required" });
+    expect(Date.parse(refreshedOrder?.expiresAt ?? "")).toBeGreaterThan(Date.now());
+    expect(payment).toMatchObject({ status: "required", failureReason: null });
+  });
+
   it("settles a paid request, persists the delivered report, and returns the payment response header", async () => {
     const facilitator = fakeFacilitator(config, { verifies: true, settles: true });
     const app = createProviderApp(config, store, { facilitatorClient: facilitator.client });
@@ -319,6 +344,39 @@ describe("provider unpaid risk report quote path", () => {
       txHash: "0xtestsettlement"
     });
     expect(delivery).toMatchObject({ paymentId: null, requestFingerprint: fingerprint });
+  });
+
+  it("returns agent-readable advice when paid retry verification fails", async () => {
+    const facilitator = fakeFacilitator(config, {
+      verifies: false,
+      invalidReason: "transaction_simulation_failed",
+      invalidMessage: 'Simulation failed: {"InstructionError":["2","InvalidAccountData"]}'
+    });
+    const app = createProviderApp(config, store, { facilitatorClient: facilitator.client });
+    const address = "0x0000000000000000000000000000000000000001";
+    const unpaid = await app.request(`/risk-report?address=${address}`, {
+      headers: { accept: "application/json" }
+    });
+    const paymentRequired = decodePaymentRequired(unpaid.headers.get("payment-required"));
+
+    const response = await app.request(`/risk-report?address=${address}`, {
+      headers: {
+        accept: "application/json",
+        "payment-signature": encodePaymentPayload(paymentRequired)
+      }
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(402);
+    expect(body).toMatchObject({
+      error: "x402_payment_verification_failed",
+      x402Error: "transaction_simulation_failed",
+      agentAdvice: {
+        nextAction: "stop_for_review"
+      }
+    });
+    expect(body.agentAdvice.likelyCause).toContain("payment transaction");
+    expect(body.payment.acceptedNetwork).toBe(config.x402Network);
   });
 
   it("returns a cached delivery for the same payment id and fingerprint without settling again", async () => {
@@ -503,7 +561,7 @@ function encodePaymentPayload(paymentRequired: PaymentRequired, paymentId?: stri
 
 function fakeFacilitator(
   config: DemoConfig,
-  behavior: { verifies?: boolean; settles?: boolean } = {}
+  behavior: { verifies?: boolean; settles?: boolean; invalidReason?: string; invalidMessage?: string } = {}
 ): { client: FacilitatorClient; verifyCalls: number; settleCalls: number } {
   const facilitator = {
     verifyCalls: 0,
@@ -521,7 +579,11 @@ function fakeFacilitator(
         if (behavior.verifies) {
           return { isValid: true, payer: "0x00000000000000000000000000000000000000aa" };
         }
-        return { isValid: false, invalidReason: "test", invalidMessage: "test facilitator does not verify" };
+        return {
+          isValid: false,
+          invalidReason: behavior.invalidReason ?? "test",
+          invalidMessage: behavior.invalidMessage ?? "test facilitator does not verify"
+        };
       },
       async settle() {
         facilitator.settleCalls += 1;

@@ -141,6 +141,18 @@ class SqliteProviderStore implements ProviderStore {
     const existingOrder = this.getOrderByFingerprint(input.requestFingerprint);
     if (existingOrder) {
       const existingPayment = this.getPaymentsForOrder(existingOrder.id)[0];
+      if (existingOrder.status === "expired" && !existingOrder.paymentId && existingPayment) {
+        this.refreshExpiredRequiredPayment({
+          orderId: existingOrder.id,
+          paymentRecordId: existingPayment.id,
+          paymentRequiredPayload: input.paymentRequiredPayload,
+          now
+        });
+        return {
+          order: this.getOrderByFingerprint(input.requestFingerprint) ?? existingOrder,
+          payment: this.getPaymentsForOrder(existingOrder.id)[0] ?? existingPayment
+        };
+      }
       if (existingPayment) {
         return { order: existingOrder, payment: existingPayment };
       }
@@ -179,6 +191,44 @@ class SqliteProviderStore implements ProviderStore {
 
     transaction();
     return { order, payment: paymentRecord };
+  }
+
+  private refreshExpiredRequiredPayment(input: {
+    orderId: string;
+    paymentRecordId: string;
+    paymentRequiredPayload: unknown;
+    now: Date;
+  }): void {
+    const expiresAt = new Date(input.now.getTime() + 60 * 60 * 1000).toISOString();
+    const transaction = this.db.transaction(() => {
+      this.db
+        .prepare(
+          `update risk_report_orders
+           set status = 'payment_required',
+               paid_at = null,
+               delivered_at = null,
+               expires_at = @expiresAt
+           where id = @orderId`
+        )
+        .run({ orderId: input.orderId, expiresAt });
+      this.db
+        .prepare(
+          `update payment_records
+           set status = 'required',
+               failure_reason = null,
+               payment_required_payload = @paymentRequiredPayload,
+               updated_at = @updatedAt,
+               settled_at = null
+           where id = @paymentRecordId`
+        )
+        .run({
+          paymentRecordId: input.paymentRecordId,
+          paymentRequiredPayload: JSON.stringify(input.paymentRequiredPayload),
+          updatedAt: input.now.toISOString()
+        });
+    });
+
+    transaction();
   }
 
   getOrderByFingerprint(requestFingerprint: string): RiskReportOrderRecord | undefined {

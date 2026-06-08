@@ -166,6 +166,61 @@ describe("runConsumerPrecheckTask", () => {
       await rm(tempDir, { recursive: true, force: true });
     }
   });
+
+  it("keeps provider x402 verification advice when paid retry returns 402", async () => {
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "x402-caw-consumer-"));
+    try {
+      const config = testConfig(tempDir);
+      const paymentRequired = paymentRequiredFixture();
+      const fetchFn = async (_url: string | URL | Request, init?: RequestInit) => {
+        if (init?.headers && "payment-signature" in (init.headers as Record<string, string>)) {
+          return new Response(
+            JSON.stringify({
+              error: "x402_payment_verification_failed",
+              x402Error: "transaction_simulation_failed",
+              agentAdvice: {
+                nextAction: "stop_for_review",
+                reason: "The Facilitator could not simulate the payment transaction.",
+                likelyCause: "For Solana exact payments, this commonly means the Provider payee has no token account."
+              }
+            }),
+            { status: 402, headers: { "content-type": "application/json" } }
+          );
+        }
+        return paymentRequiredResponse(paymentRequired);
+      };
+
+      const result = await runConsumerTask(
+        {
+          address: "0x0000000000000000000000000000000000000001",
+          maxPriceUsdc: "0.005",
+          expectedPayTo: config.providerPayToAddress,
+          expectedNetwork: config.x402Network,
+          expectedTokenSymbol: config.x402TokenSymbol,
+          expectedResource: "/risk-report"
+        },
+        {
+          config,
+          fetchFn,
+          cawClient: successfulCawClient(),
+          now: new Date("2026-05-31T00:01:00.000Z"),
+          pactApprovalPollMs: 1,
+          pactApprovalTimeoutMs: 10
+        }
+      );
+      const audit = JSON.parse(await readFile(result.auditPath, "utf8")) as {
+        validation: { status: string; reason: string };
+      };
+
+      expect(result).toMatchObject({ paymentAttempted: true, status: "validation_failed" });
+      expect(audit.validation).toMatchObject({ status: "failed" });
+      expect(audit.validation.reason).toContain("x402Error=transaction_simulation_failed");
+      expect(audit.validation.reason).toContain("nextAction=stop_for_review");
+      expect(audit.validation.reason).toContain("token account");
+    } finally {
+      await rm(tempDir, { recursive: true, force: true });
+    }
+  });
 });
 
 function testConfig(tempDir: string) {

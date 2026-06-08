@@ -197,6 +197,7 @@ export async function runConsumerTask(
   }
 
   if (!paidResponse || paidResponse.status !== 200) {
+    const failureSummary = paidResponse ? await paidRetryFailureSummary(paidResponse) : "paid retry did not run";
     const auditPath = await writeAuditRecord(config.auditDir, {
       ...baseAudit,
       pact: { ...pactSummary(pactSpec, args, "active"), pactId, credential: "available_redacted" },
@@ -212,7 +213,7 @@ export async function runConsumerTask(
       validation: {
         status: "failed",
         checks: [],
-        reason: paidResponse ? `paid retry returned HTTP ${paidResponse.status}` : "paid retry did not run"
+        reason: failureSummary
       }
     });
     return { taskId, address, precheck, auditPath, paymentAttempted: true, status: "validation_failed" };
@@ -254,6 +255,31 @@ export async function runConsumerTask(
     paymentAttempted: true,
     status: validation.status === "passed" ? "succeeded" : "validation_failed"
   };
+}
+
+async function paidRetryFailureSummary(response: Response): Promise<string> {
+  const prefix = `paid retry returned HTTP ${response.status}`;
+  try {
+    const body = (await response.clone().json()) as {
+      error?: unknown;
+      x402Error?: unknown;
+      agentAdvice?: {
+        reason?: unknown;
+        likelyCause?: unknown;
+        nextAction?: unknown;
+      };
+    };
+    const details = [
+      typeof body.error === "string" ? `error=${body.error}` : undefined,
+      typeof body.x402Error === "string" ? `x402Error=${body.x402Error}` : undefined,
+      typeof body.agentAdvice?.nextAction === "string" ? `nextAction=${body.agentAdvice.nextAction}` : undefined,
+      typeof body.agentAdvice?.reason === "string" ? `reason=${body.agentAdvice.reason}` : undefined,
+      typeof body.agentAdvice?.likelyCause === "string" ? `likelyCause=${body.agentAdvice.likelyCause}` : undefined
+    ].filter(Boolean);
+    return details.length > 0 ? `${prefix}: ${details.join("; ")}` : prefix;
+  } catch {
+    return prefix;
+  }
 }
 
 function pactSummary(
