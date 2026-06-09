@@ -84,16 +84,15 @@ http://localhost:4021/demo
 
 这个 console 用于 operator / 评委观察和讲解。它展示 demo provider 的 capability、quote、status 和 Pact plan 形态，并生成一段可复制的 purchase-intent prompt。prompt 采用 task / spend plan / wallet authorization / safety boundary 的结构，只把 Agent 指向 `skills/caw-x402-purchasing`；具体流程由 skill 决定。它不会直接调用 Codex，也不会从浏览器执行付款。
 
-另开一个终端，只运行 quote / precheck：
+另开一个终端，通过 skill-local 入口只运行 quote / precheck：
 
 ```bash
-npm run agents:precheck -- \
-  --address 0x0000000000000000000000000000000000000001 \
-  --api http://localhost:4021/risk-report \
+npm run skill:precheck -- \
+  --url 'http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001' \
   --max-price-usdc 0.005
 ```
 
-除非 operator 在当前会话中明确批准，否则不要运行真实 CAW 付款流程。
+除非 operator 已经给出端到端购买意图、预算和 provider 约束，否则不要运行真实 CAW 付款流程。Cobo Wallet 中的 Pact 批准仍然是资金授权步骤。
 
 ## Demo Flow
 
@@ -102,7 +101,7 @@ npm run agents:precheck -- \
 3. 用页面观察 example provider 的 manifest、quote、status 和 Pact plan 形态。
 4. 将生成的 purchase-intent prompt 复制到已安装 skill 的 Codex、Claude Code 或其他 runtime。
 5. Agent Runtime 读取 `skills/caw-x402-purchasing`，由 skill 驱动 quote review、status recovery、Pact planning、payment、delivery validation 和 redacted audit evidence。
-6. 真实付款仍然必须在 Agent Runtime 会话里等待 operator 明确批准。
+6. 对端到端购买请求，Agent 在 quote/status/policy 检查通过后提交 CAW Pact 请求，并提醒 operator 到 Cobo Wallet 批准。Cobo Wallet 里的 Pact 批准才是资金授权。Pact active 后，如果 quote、policy 和 provider status 没有变化，Agent 再使用这个已批准 Pact 执行付款，不再要求聊天里重复确认。
 
 ## 与“实现一个 Agent”的区别
 

@@ -1,7 +1,7 @@
 export function planCawAuthorization(intent) {
   return {
     adapter: "caw",
-    status: "requires_user_approval",
+    status: "ready_to_submit_pact_request",
     createsPayment: false,
     authorizationObject: "caw_pact",
     summary: {
@@ -12,6 +12,6 @@ export function planCawAuthorization(intent) {
       payee: intent.constraints.expectedPayee ?? intent.quote.payment?.payTo ?? null,
       requestFingerprint: intent.quote.requestFingerprint ?? null
     },
-    nextAction: "show_pact_summary_and_stop_for_user_approval"
+    nextAction: "submit_pact_request_and_prompt_cobo_wallet_approval"
   };
 }

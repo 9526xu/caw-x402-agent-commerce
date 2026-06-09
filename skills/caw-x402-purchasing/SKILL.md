@@ -7,7 +7,29 @@ description: Use when an agent runtime needs to buy a single-shot x402 paid reso
 
 Use this skill when a user asks Codex, Claude Code, or another agent runtime to purchase an x402 paid resource. CAW Pact is the default wallet adapter; FluxA x402 v3 intent mandate is a reference adapter. The `backend/` provider is the Example Paid Resource, and `agents/` is a demo harness rather than a runtime dependency for this skill.
 
-Do not perform live wallet payment, Pact creation, mandate creation, or paid retry unless the user explicitly approves it in the current conversation. Default to fake facilitator or local precheck/test paths.
+Use the installed skill's own `scripts/` directory as the execution entrypoint. Do not search for package roots, consumer scripts, or `agents/` directories to execute a purchase unless the user explicitly asks to inspect the demo harness.
+
+In a source checkout that has `package.json`, `npm run skill:*` commands are convenient wrappers. In a buyer runtime workspace such as Claude Code's `.claude/skills/caw-x402-purchasing` install, run the scripts directly:
+
+```bash
+node .claude/skills/caw-x402-purchasing/scripts/run-purchase-precheck.mjs ...
+node .claude/skills/caw-x402-purchasing/scripts/authorize.mjs ...
+node .claude/skills/caw-x402-purchasing/scripts/purchase-with-caw-fetch.mjs ...
+```
+
+If `.claude/skills/caw-x402-purchasing` does not exist but `.agents/skills/caw-x402-purchasing` does, use the same paths under `.agents/skills/caw-x402-purchasing`. Do not use `find` to discover older project copies.
+
+Default to fake facilitator or local precheck/test paths unless the user has asked for an end-to-end purchase. If the user only asks for quote, precheck, planning, or authorization preview, do not submit a Pact or execute payment.
+
+Approval model:
+
+- If the user has given an end-to-end purchase intent plus budget and provider constraints, the agent must submit a CAW Pact request after manifest, quote, provider status, and policy checks pass. Do not ask for an extra chat confirmation before Pact submission.
+- Before submitting the Pact request, print or summarize the exact boundary being requested: chain, token, payee, amount, transaction count, and time window. This is an audit/update step, not a permission prompt.
+- After submitting the Pact request, tell the user to approve the Pact in Cobo Wallet.
+- Cobo Wallet approval is the funds authorization.
+- Do not conflate Pact submission with payment execution. `--submit-pact` requests wallet authorization only; it does not pay. `--pay --pact-id <id>` executes payment with an approved Pact. `--execute` is an explicit all-in-one shortcut that submits a Pact, waits for approval, and pays.
+- After a CAW Pact is active, the quote/status/policy still match, and no duplicate-payment evidence exists, execute the payment under that active Pact when the task is still an end-to-end purchase. Do not ask for another chat approval.
+- Ask again only if the quote, payee, network, token, amount, resource, provider status, or Pact policy changes, or if recovery/manual review evidence appears.
 
 ## User Intent Input
 
@@ -17,7 +39,7 @@ Prefer a short purchase-intent prompt over a hard-coded runbook. A good invocati
 - The paid resource URL or provider manifest.
 - The spend plan: budget, token/currency, task scope, and desired authorization window.
 - The wallet authorization model: use CAW Pact approval, not raw wallet access.
-- The approval boundary: show quote/status/Pact summary and stop before Pact creation or payment.
+- The approval boundary: after quote/status/policy checks pass, submit the Pact request and prompt the user to approve the shown Pact in Cobo Wallet. Payment execution is a separate step using the approved Pact.
 
 The prompt should not restate every quote, status, payment, recovery, validation, and audit step. Those rules live in this skill.
 
@@ -58,9 +80,10 @@ conflict -> manual_review
    - `GET /orders/status?fingerprint=<requestFingerprint>`
    - `GET /orders/status?paymentId=<x402PaymentIdentifier>` when the x402 payment identifier is available.
 4. Build a Purchase Intent from user constraints, provider manifest, quote, and status.
-5. Show the quote and wallet-authorization summary before any live wallet call.
-6. Execute payment only after quote, policy, provider status, and wallet authorization all pass.
-7. Validate delivery and write a redacted audit record.
+5. Print the quote and wallet-authorization summary as an audit/update step.
+6. If the user asked for an end-to-end purchase, immediately submit the CAW Pact request after checks pass, then tell the user to approve it in Cobo Wallet. If the user asked only for planning or precheck, stop here.
+7. Execute payment with `--pay --pact-id <approved-pact-id>` after quote, policy, provider status, and wallet authorization all pass; do not ask for another chat approval if the active Pact exactly matches the shown summary.
+8. Validate delivery and write a redacted audit record.
 
 ## Wallet Adapter Rules
 
@@ -68,10 +91,10 @@ Skill scripts must remain self-contained under `skills/caw-x402-purchasing/scrip
 
 Supported planning adapters:
 
-- `caw`: plans a CAW Pact authorization summary and stops for user approval.
+- `caw`: plans a CAW Pact authorization summary. For end-to-end purchase requests, submit the Pact request after checks pass and prompt the user to approve it in Cobo Wallet. Cobo Wallet approval is the authoritative funds approval; once the Pact is active, pay with the approved Pact if the quote/status/policy still match.
 - `fluxa-x402v3`: plans a signed intent mandate flow and stops before calling the FluxA mandate or payment endpoints.
 
-The generic flow is: paid resource -> quote/payment requirement -> spend intent -> authorization object -> user approval -> x402 payment header -> paid retry -> result or structured failure -> redacted audit.
+The generic flow is: paid resource -> quote/payment requirement -> spend intent -> authorization object -> submit wallet authorization request -> wallet approval -> pay with approved Pact -> paid retry -> result or structured failure -> redacted audit.
 
 ## Provider Manifest Rules
 
@@ -150,13 +173,16 @@ Allowed audit summaries include payment id, Pact id, redacted credential availab
 - `scripts/check-provider-capabilities.mjs`: read `/llms.txt` and optional `/orders/status` into a redacted JSON summary.
 - `scripts/run-purchase-precheck.mjs`: read manifest, quote, `X-Request-Fingerprint`, provider status, and policy checks into one redacted JSON summary.
 - `scripts/authorize.mjs`: run precheck and build a redacted wallet-adapter authorization plan without creating a Pact, mandate, payment, or proof.
+- `scripts/purchase-with-caw-fetch.mjs`: run precheck and plan, submit a CAW Pact request with `--submit-pact`, pay with an approved Pact using `--pay --pact-id <id>`, or run the all-in-one submit/wait/pay shortcut with `--execute`.
 - `scripts/lib/`: shared quote, status, policy, authorization, error, and adapter modules for portable skill CLIs.
 - `templates/audit-record.example.json`: copy this shape when writing an agent-side audit summary.
 - `references/provider-capability-contract.md`: load when implementing or reviewing provider manifest/status behavior.
 
 ## Invocation Templates
 
-Run consumer templates from this repo root.
+Run skill templates from the installed skill directory. Prefer these skill-local scripts over any repo-level `agents/` demo harness.
+
+If you are in a source checkout with `package.json`, you may use the `npm run skill:*` wrappers shown below. If you are in a buyer workspace without `package.json`, replace `npm run skill:precheck --` with `node .claude/skills/caw-x402-purchasing/scripts/run-purchase-precheck.mjs`, replace `npm run skill:authorize --` with `node .claude/skills/caw-x402-purchasing/scripts/authorize.mjs`, and replace `npm run skill:purchase --` with `node .claude/skills/caw-x402-purchasing/scripts/purchase-with-caw-fetch.mjs`.
 
 Manifest / quote / status precheck, no payment:
 
@@ -190,28 +216,52 @@ npm run skill:authorize -- \
   --wallet-adapter fluxa-x402v3
 ```
 
-Precheck / quote review only:
+End-to-end CAW purchase through the skill-local script:
 
 ```bash
-npm run agents:precheck -- \
-  --address <target_address> \
-  --api <paid_resource_api> \
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=<target_address>' \
   --max-price-usdc <budget> \
   --expected-payee <allowed_payee> \
   --expected-token USDC \
   --expected-network <allowed_network>
 ```
 
-Full payment flow, only after explicit user approval for live payment:
+The command above plans only. For an end-to-end purchase request, first submit the CAW Pact request:
 
 ```bash
-npm run agents:consumer -- \
-  --address <target_address> \
-  --api <paid_resource_api> \
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=<target_address>' \
   --max-price-usdc <budget> \
   --expected-payee <allowed_payee> \
   --expected-token USDC \
-  --expected-network <allowed_network>
+  --expected-network <allowed_network> \
+  --submit-pact
+```
+
+After the operator approves the Pact in Cobo Wallet, resume payment with the approved Pact id:
+
+```bash
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=<target_address>' \
+  --max-price-usdc <budget> \
+  --expected-payee <allowed_payee> \
+  --expected-token USDC \
+  --expected-network <allowed_network> \
+  --pay \
+  --pact-id <approved_pact_id>
+```
+
+Only use the all-in-one shortcut when the operator explicitly wants the script to submit the Pact, wait for Cobo Wallet approval, and pay in one long-running command:
+
+```bash
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=<target_address>' \
+  --max-price-usdc <budget> \
+  --expected-payee <allowed_payee> \
+  --expected-token USDC \
+  --expected-network <allowed_network> \
+  --execute
 ```
 
 Provider manifest/status checks:

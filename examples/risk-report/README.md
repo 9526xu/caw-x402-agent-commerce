@@ -14,9 +14,9 @@ The target runtime is Codex, Claude Code, or another existing agent runtime read
 
 ## Boundaries
 
-- Purchasing Skill: repo-local agent instructions at `skills/caw-x402-purchasing/SKILL.md`, with `.agents/skills/caw-x402-purchasing` reserved as the local runtime install link. It tells an agent runtime how to read provider capabilities, enforce quote-first and precheck-first rules, prevent duplicate payment, invoke the demo consumer safely, and redact sensitive CAW/payment material.
+- Purchasing Skill: repo-local agent instructions at `skills/caw-x402-purchasing/SKILL.md`, with `.agents/skills/caw-x402-purchasing` reserved as the local runtime install link. It tells an agent runtime how to read provider capabilities, enforce quote-first and precheck-first rules, prevent duplicate payment, invoke the skill-local scripts safely, and redact sensitive CAW/payment material.
 - Provider Server: Hono API exposing the Example Paid Resource at `GET /risk-report?address=...`, plus agent-facing discovery and recovery helpers: `GET /llms.txt` and `GET /orders/status?fingerprint=...` / `GET /orders/status?paymentId=...`.
-- Reference Consumer CLI: demo executor. It reads the 402 requirement, checks price/payee/network/token/resource, submits a CAW Pact, waits for human approval, executes the approved payment path, retries with payment proof, validates the report, and writes a redacted audit JSON.
+- Skill-local purchase CLI: `skills/caw-x402-purchasing/scripts/purchase-with-caw-fetch.mjs`. It reads the 402 requirement, checks price/payee/network/token/resource, submits a CAW Pact request for end-to-end purchases, waits for Cobo Wallet approval, executes `caw fetch`, and emits a redacted result summary.
 - CAW Pact: task-level authorization. Human approval of the Pact authorizes later execution within strict policy bounds. It is not the same UX as a wallet popup for every transaction. Use `always_review` in future versions if every operation should require owner review.
 - x402 settlement proves payment. Report validation proves service delivery quality for this MVP. Both are recorded because one does not replace the other.
 - Safety rule: quote mismatch, payee mismatch, token mismatch, network mismatch, or changed paid resource must fail closed. Do not perform real CAW payment or live settlement unless the operator explicitly approves it.
@@ -24,8 +24,7 @@ The target runtime is Codex, Claude Code, or another existing agent runtime read
 ## Setup
 
 ```bash
-cd experiments/x402-caw-risk-report
-npm install
+npm run install:all
 npm run check
 npm run test
 ```
@@ -39,12 +38,11 @@ Important values:
 - `X402_ASSET_ADDRESS`: optional token contract or mint address for explicit x402 quotes when the network has no default asset or the default asset is not supported by the buyer wallet.
 - `X402_FACILITATOR_URL`: x402 facilitator endpoint.
 - `CAW_API_BASE_URL`, `CAW_AGENT_CREDENTIAL`: real CAW CLI/API access. Keep secret.
-- `CAW_X402_PAYMENT_HEADER_COMMAND`: optional local adapter command that prints `{"paymentSignatureHeader":"..."}`. This is required for a full live CAW -> x402 paid retry until the CAW CLI exposes x402 payment headers directly.
 
 ## Run Provider
 
 ```bash
-npm run provider
+npm run backend:provider
 ```
 
 Agent-facing provider capability manifest:
@@ -93,57 +91,55 @@ PROVIDER_PAY_TO_ADDRESS=Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk \
 X402_NETWORK=solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1 \
 X402_TOKEN_SYMBOL=USDC \
 X402_PRICE_USDC=0.005 \
-npm run provider
+npm run backend:provider
 ```
 
 These are the built-in defaults for `npm run provider`. The default x402 Solana Devnet asset is USDC mint `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`, which matches Cobo CAW token `SOLDEV_SOL_USDC`.
 
 ## Agent Runtime Flow
 
-Codex, Claude Code, or another agent runtime should use the repo-local `caw-x402-purchasing` skill as the policy layer and this consumer as the demo executor:
+Codex, Claude Code, or another agent runtime should use the repo-local `caw-x402-purchasing` skill as both the policy layer and the execution entrypoint:
 
 1. Read `GET /llms.txt` for provider capabilities.
-2. Run consumer precheck to fetch and validate the x402 quote.
+2. Run the skill-local precheck to fetch and validate the x402 quote.
 3. Query `/orders/status` by request fingerprint before Pact submission.
 4. Present quote, provider status, Purchase Intent, and Pact summary.
-5. Only after explicit live-payment approval, run the full consumer flow.
+5. For end-to-end purchase requests, run the skill-local purchase script with `--execute`; it submits the CAW Pact request and waits for Cobo Wallet approval.
 6. Validate the returned risk report and write redacted audit evidence.
 
-## Run Consumer
+## Run Skill-Local Purchase Script
 
 Precheck only:
 
 ```bash
-npm run consumer -- \
-  --precheck-only \
-  --address 0x0000000000000000000000000000000000000001 \
-  --api http://localhost:4021/risk-report \
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001' \
   --max-price-usdc 0.005 \
-  --expected-payee Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk \
+  --expected-payee <allowed_payee> \
   --expected-token USDC \
   --expected-network solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1
 ```
 
-The Consumer translates x402 network/token identifiers into CAW policy identifiers for the Pact. For Solana Devnet USDC that means x402 `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` + `USDC` becomes CAW `SOLDEV_SOL` + `SOLDEV_SOL_USDC`.
+The skill script translates x402 network/token identifiers into CAW policy identifiers for the Pact. For Solana Devnet USDC that means x402 `solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1` + `USDC` becomes CAW `SOLDEV_SOL` + `SOLDEV_SOL_USDC`.
 
 Full flow:
 
 ```bash
-npm run consumer -- \
-  --address 0x0000000000000000000000000000000000000001 \
-  --api http://localhost:4021/risk-report \
+npm run skill:purchase -- \
+  --url 'http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001' \
   --max-price-usdc 0.005 \
-  --expected-payee Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk \
+  --expected-payee <allowed_payee> \
   --expected-token USDC \
-  --expected-network solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1
+  --expected-network solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1 \
+  --execute
 ```
 
-The full flow submits a Pact and waits for approval. If the Pact is denied, times out, or CAW cannot produce an x402 `PAYMENT-SIGNATURE`, the CLI stops safely and writes a failure audit. It must not loop payment attempts.
+The full flow submits a Pact request and waits for Cobo Wallet approval. If the Pact is denied, times out, or `caw fetch` fails, the CLI stops safely and reports redacted evidence. It must not loop payment attempts.
 
 ## Failure Checks
 
 - Address format rejection: call Provider with `address=not-an-address`; expect `400`.
-- Over-budget refusal: run Consumer with `--max-price-usdc 0.001`; expect no Pact/payment and an audit failure reason.
+- Over-budget refusal: run the skill-local purchase script with `--max-price-usdc 0.001`; expect no Pact/payment and a failure reason.
 - Payee mismatch refusal: use a different `--expected-payee`; expect no payment.
 - Token/network mismatch refusal: use mismatched `--expected-token` or `--expected-network`; expect no payment.
 - CAW policy denial: approve a narrower Pact than the required payment or reuse a completed Pact; expect safe failure and no paid retry loop.

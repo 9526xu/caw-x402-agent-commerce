@@ -23,4 +23,4 @@ echo "Open the browser demo console:"
 echo "  http://localhost:4021/demo"
 echo
 echo "Then run this in another terminal:"
-echo "  npm run agents:precheck -- --address 0x0000000000000000000000000000000000000001 --api http://localhost:4021/risk-report --max-price-usdc 0.005"
+echo "  npm run skill:precheck -- --url 'http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001' --max-price-usdc 0.005"

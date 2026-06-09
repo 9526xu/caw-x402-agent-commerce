@@ -61,16 +61,15 @@ http://localhost:4021/demo
 
 The console is for operator/reader visibility. It shows provider capability, quote, status, and Pact-plan shape for the demo provider, and it generates a copyable purchase-intent prompt. The prompt follows a task/spend-plan/wallet-authorization/safety-boundary shape and points the agent to `skills/caw-x402-purchasing`; the skill owns the concrete workflow. The console does not call Codex directly or execute payments from the browser.
 
-In another terminal, run quote/precheck only:
+In another terminal, run quote/precheck only through the skill-local entrypoint:
 
 ```bash
-npm run agents:precheck -- \
-  --address 0x0000000000000000000000000000000000000001 \
-  --api http://localhost:4021/risk-report \
+npm run skill:precheck -- \
+  --url 'http://localhost:4021/risk-report?address=0x0000000000000000000000000000000000000001' \
   --max-price-usdc 0.005
 ```
 
-Do not run a live payment flow unless the operator explicitly approves it in the current session.
+Do not run a live payment flow unless the operator has given an end-to-end purchase intent with budget and provider constraints. Cobo Wallet Pact approval remains the funds authorization step.
 
 ## Demo Flow
 
@@ -79,7 +78,7 @@ Do not run a live payment flow unless the operator explicitly approves it in the
 3. Use the page to inspect the example provider's manifest, quote, status, and Pact-plan shape.
 4. Copy the generated purchase-intent prompt into Codex, Claude Code, or another runtime that has the skill installed.
 5. The agent runtime reads `skills/caw-x402-purchasing` and lets the skill drive quote review, status recovery, Pact planning, payment, delivery validation, and redacted audit evidence.
-6. Payment execution still requires explicit operator approval in the agent runtime session.
+6. For an end-to-end purchase request, the agent submits the CAW Pact request after quote/status/policy checks pass, then tells the operator to approve it in Cobo Wallet. Cobo Wallet approval is the funds authorization; after the Pact is active, the agent uses the approved Pact for payment unless the quote, policy, or provider status changes.
 
 ## Safety Rules
 

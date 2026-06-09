@@ -755,7 +755,7 @@
       }
 
       function updateCommand() {
-        commandText.textContent = `npm run agents:precheck -- --address ${addressInput.value.trim()} --api ${cleanBase()}/risk-report --max-price-usdc ${budgetInput.value.trim()}`;
+        commandText.textContent = `npm run skill:purchase -- --url '${cleanBase()}/risk-report?address=${addressInput.value.trim()}' --max-price-usdc ${budgetInput.value.trim()}`;
         agentPrompt.value = buildAgentPrompt();
       }
 
@@ -785,13 +785,14 @@
           "** Wallet authorization model **",
           "Use the repo-local skill as the policy and execution guide:",
           "- skills/caw-x402-purchasing",
+          "- Execute through npm run skill:purchase from the repository root; do not search for the agents/ demo harness.",
           "",
-          "If a CAW Pact is required, derive it from the live x402 quote and this spend plan. Show me the quote, provider status, and least-privilege Pact summary before asking me to approve anything in CAW.",
+          "If a CAW Pact is required, derive it from the live x402 quote and this spend plan. Print the quote, provider status, and least-privilege Pact summary as an audit/update step, then submit only the Pact request and tell me to approve it in Cobo Wallet. Do not execute payment in the same step as Pact submission. After I approve the Pact in Cobo Wallet, continue payment with the approved Pact id if the quote and policy still match; do not ask for another chat confirmation.",
           "",
           "** Safety boundary **",
           "- Do not treat the browser demo page as part of the agent workflow.",
           "- Do not copy or assume wallet-specific endpoints from this prompt; use the CAW/x402 behavior defined by the skill and live provider manifest.",
-          "- Stop for my explicit approval before any Pact creation or payment execution.",
+          "- Do not ask for an extra chat approval before Pact submission. Treat Cobo Wallet approval as the funds authorization. Use the approved Pact for payment only after the Pact is active.",
           "- Do not log CAW credentials, raw payment payloads, private keys, seed phrases, or reusable payment proofs."
         ].join("\\n");
       }
