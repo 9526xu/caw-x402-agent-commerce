@@ -173,7 +173,7 @@ Allowed audit summaries include payment id, Pact id, redacted credential availab
 - `scripts/check-provider-capabilities.mjs`: read `/llms.txt` and optional `/orders/status` into a redacted JSON summary.
 - `scripts/run-purchase-precheck.mjs`: read manifest, quote, `X-Request-Fingerprint`, provider status, and policy checks into one redacted JSON summary.
 - `scripts/authorize.mjs`: run precheck and build a redacted wallet-adapter authorization plan without creating a Pact, mandate, payment, or proof.
-- `scripts/purchase-with-caw-fetch.mjs`: run precheck and plan, submit a CAW Pact request with `--submit-pact`, pay with an approved Pact using `--pay --pact-id <id>`, or run the all-in-one submit/wait/pay shortcut with `--execute`.
+- `scripts/purchase-with-caw-fetch.mjs`: run precheck and plan, submit a CAW Pact request with `--submit-pact`, pay with an approved Pact using `--pay --pact-id <id>`, or run the all-in-one submit/wait/pay shortcut with `--execute`. After payment, queries `/orders/status` to retrieve the on-chain settlement `txHash` from the provider.
 - `scripts/lib/`: shared quote, status, policy, authorization, error, and adapter modules for portable skill CLIs.
 - `templates/audit-record.example.json`: copy this shape when writing an agent-side audit summary.
 - `references/provider-capability-contract.md`: load when implementing or reviewing provider manifest/status behavior.

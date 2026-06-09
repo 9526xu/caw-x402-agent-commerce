@@ -70,6 +70,13 @@ export function redactStatus(body) {
           payee: body.payment.payee
         }
       : null,
+    settlement: body.settlement
+      ? {
+          txHash: body.settlement.txHash ?? null,
+          payer: body.settlement.payer ?? null,
+          settledAt: body.settlement.settledAt ?? null
+        }
+      : undefined,
     delivery: body.delivery
       ? {
           available: Boolean(body.delivery.available),

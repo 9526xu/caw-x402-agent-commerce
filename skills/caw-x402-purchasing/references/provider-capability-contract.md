@@ -45,6 +45,11 @@ Expected response shape:
     "network": "solana:...",
     "payee": "Fxvz..."
   },
+  "settlement": {
+    "txHash": "0xabc...",
+    "payer": "0x0000...00aa",
+    "settledAt": "2026-06-09T..."
+  },
   "delivery": {
     "available": true,
     "hash": "sha256:...",

@@ -169,6 +169,7 @@ describe("provider unpaid risk report quote path", () => {
         nextAction: "submit_pact"
       }
     });
+    expect(body.settlement).toBeUndefined();
   });
 
   it("uses the current browser URL for paywall paid retries", async () => {
@@ -307,6 +308,11 @@ describe("provider unpaid risk report quote path", () => {
         nextAction: "use_cached_delivery"
       }
     });
+    expect(body.settlement).toMatchObject({
+      txHash: "0xtestsettlement",
+      payer: "0x00000000000000000000000000000000000000aa"
+    });
+    expect(body.settlement.settledAt).toEqual(expect.any(String));
     expect(body.delivery.hash).toMatch(/^sha256:/);
   });
 

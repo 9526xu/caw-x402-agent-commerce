@@ -104,11 +104,16 @@ async function main() {
     args
   });
 
+  const settlement = payment.ok
+    ? await queryOrderSettlement(precheck.resource.url, precheck.quote.requestFingerprint, args)
+    : undefined;
+
   writeResult({
     ok: payment.ok,
     stage: payment.ok ? "paid" : "payment_failed",
     pact: approval,
     payment,
+    settlement,
     nextAction: payment.ok ? "validate_delivery_and_write_redacted_audit" : "check_caw_tx_and_provider_status_before_retry"
   });
   if (!payment.ok) process.exitCode = 2;
@@ -263,6 +268,29 @@ async function waitForPactApproval(pactId, parsedArgs) {
     await sleep(parsedArgs.approvalPollMs);
   }
   return { pactId, status: "timeout", reason: "Timed out waiting for Cobo Wallet Pact approval" };
+}
+
+async function queryOrderSettlement(resourceUrl, requestFingerprint, parsedArgs) {
+  try {
+    const base = parsedArgs.baseUrl ?? new URL(resourceUrl).origin;
+    const statusUrl = new URL("/orders/status", base);
+    statusUrl.searchParams.set("fingerprint", requestFingerprint);
+
+    const headers = { accept: "application/json" };
+    if (parsedArgs.apiKey) headers["authorization"] = `Bearer ${parsedArgs.apiKey}`;
+
+    const response = await fetch(statusUrl.toString(), { headers });
+    if (!response.ok) {
+      return { queried: true, error: `HTTP ${response.status}` };
+    }
+
+    const body = await response.json();
+    return body.settlement
+      ? { queried: true, txHash: body.settlement.txHash, payer: body.settlement.payer, settledAt: body.settlement.settledAt }
+      : { queried: true, txHash: null };
+  } catch (error) {
+    return { queried: true, error: String(error.message ?? error) };
+  }
 }
 
 async function runCawFetch(input) {

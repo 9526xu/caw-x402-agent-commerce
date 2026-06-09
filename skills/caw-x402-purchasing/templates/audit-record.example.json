@@ -51,6 +51,11 @@
     "paymentId": null,
     "paymentProof": "not_recorded"
   },
+  "settlement": {
+    "txHash": null,
+    "payer": null,
+    "settledAt": null
+  },
   "delivery": {
     "status": "not_attempted",
     "hash": null,

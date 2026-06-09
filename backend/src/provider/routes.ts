@@ -61,8 +61,10 @@ export function createProviderApp(
         ? store.getOrderByPaymentId(order.paymentId) ?? order
         : store.getOrderByFingerprint(order.requestFingerprint) ?? order;
     const delivery = store.getDeliveryForOrder(currentOrder.id);
+    const payments = store.getPaymentsForOrder(currentOrder.id);
+    const settledPayment = payments.find((p) => p.status === "settled");
 
-    return c.json(orderStatusResponse(currentOrder, delivery));
+    return c.json(orderStatusResponse(currentOrder, delivery, settledPayment));
   });
 
   app.get("/health", (c) => {
@@ -386,7 +388,11 @@ function orderStatusNotFound(input: { fingerprint?: string; paymentId?: string }
   };
 }
 
-function orderStatusResponse(order: RiskReportOrderRecord, delivery?: { responseHash: string }) {
+function orderStatusResponse(
+  order: RiskReportOrderRecord,
+  delivery?: { responseHash: string },
+  settledPayment?: { txHash: string | null; payer: string | null; settledAt: string | null }
+) {
   const deliveryAvailable = Boolean(delivery);
   return {
     status: order.status,
@@ -400,6 +406,13 @@ function orderStatusResponse(order: RiskReportOrderRecord, delivery?: { response
       network: order.network,
       payee: order.payTo
     },
+    settlement: settledPayment
+      ? {
+          txHash: settledPayment.txHash,
+          payer: settledPayment.payer,
+          settledAt: settledPayment.settledAt
+        }
+      : undefined,
     delivery: {
       available: deliveryAvailable,
       hash: delivery?.responseHash ?? null,
