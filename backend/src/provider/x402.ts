@@ -132,27 +132,46 @@ export function createX402PaymentMiddleware(
       if (!requestFingerprint) return;
 
       const responseBody = responseBodyFromTransportContext(context.transportContext);
-      if (!responseBody) return;
 
+      if (responseBody) {
+        if (paymentId) {
+          store.recordSettledDelivery({
+            paymentId,
+            requestFingerprint,
+            settlementResponse: context.result,
+            txHash: context.result.transaction,
+            payer: context.result.payer,
+            responseBody
+          });
+        } else {
+          store.recordSettledDeliveryByFingerprint({
+            requestFingerprint,
+            settlementResponse: context.result,
+            txHash: context.result.transaction,
+            payer: context.result.payer,
+            responseBody
+          });
+        }
+        return;
+      }
+
+      // Body unreadable from transport context — still record settlement so txHash is persisted.
       if (paymentId) {
-        store.recordSettledDelivery({
+        store.recordSettledPayment({
           paymentId,
           requestFingerprint,
           settlementResponse: context.result,
           txHash: context.result.transaction,
-          payer: context.result.payer,
-          responseBody
+          payer: context.result.payer
         });
-        return;
+      } else {
+        store.recordSettledPaymentByFingerprint({
+          requestFingerprint,
+          settlementResponse: context.result,
+          txHash: context.result.transaction,
+          payer: context.result.payer
+        });
       }
-
-      store.recordSettledDeliveryByFingerprint({
-        requestFingerprint,
-        settlementResponse: context.result,
-        txHash: context.result.transaction,
-        payer: context.result.payer,
-        responseBody
-      });
     })
     .onSettleFailure(async (context) => {
       console.warn("[x402] settle failed", {

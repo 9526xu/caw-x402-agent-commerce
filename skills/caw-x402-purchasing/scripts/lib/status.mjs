@@ -72,7 +72,9 @@ export function redactStatus(body) {
       : null,
     settlement: body.settlement
       ? {
-          txHash: body.settlement.txHash ?? null,
+          txId: body.settlement.txId ?? body.settlement.txHash ?? body.settlement.tx_id ?? null,
+          tx_id: body.settlement.tx_id ?? body.settlement.txId ?? body.settlement.txHash ?? null,
+          txHash: body.settlement.txHash ?? body.settlement.txId ?? body.settlement.tx_id ?? null,
           payer: body.settlement.payer ?? null,
           settledAt: body.settlement.settledAt ?? null
         }

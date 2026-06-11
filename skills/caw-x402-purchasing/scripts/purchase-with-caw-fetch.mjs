@@ -286,7 +286,14 @@ async function queryOrderSettlement(resourceUrl, requestFingerprint, parsedArgs)
 
     const body = await response.json();
     return body.settlement
-      ? { queried: true, txHash: body.settlement.txHash, payer: body.settlement.payer, settledAt: body.settlement.settledAt }
+      ? {
+          queried: true,
+          txId: body.settlement.txId ?? body.settlement.txHash ?? body.settlement.tx_id,
+          tx_id: body.settlement.tx_id ?? body.settlement.txId ?? body.settlement.txHash,
+          txHash: body.settlement.txHash ?? body.settlement.txId ?? body.settlement.tx_id,
+          payer: body.settlement.payer,
+          settledAt: body.settlement.settledAt
+        }
       : { queried: true, txHash: null };
   } catch (error) {
     return { queried: true, error: String(error.message ?? error) };

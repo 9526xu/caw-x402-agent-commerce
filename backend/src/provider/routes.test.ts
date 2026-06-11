@@ -309,6 +309,8 @@ describe("provider unpaid risk report quote path", () => {
       }
     });
     expect(body.settlement).toMatchObject({
+      txId: "0xtestsettlement",
+      tx_id: "0xtestsettlement",
       txHash: "0xtestsettlement",
       payer: "0x00000000000000000000000000000000000000aa"
     });

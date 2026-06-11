@@ -237,7 +237,13 @@ export async function runConsumerTask(
       cawReference: payment.cawReference,
       transaction: payment.transaction,
       settlement: settlement
-        ? { network: settlement.network, transaction: settlement.transaction, payer: settlement.payer }
+        ? {
+            network: settlement.network,
+            txId: settlement.transaction,
+            tx_id: settlement.transaction,
+            transaction: settlement.transaction,
+            payer: settlement.payer
+          }
         : undefined
     },
     report: isReportForAudit(paidBody.report)

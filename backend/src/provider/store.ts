@@ -107,6 +107,13 @@ export type ProviderStore = {
     payer?: string;
     now?: Date;
   }): void;
+  recordSettledPaymentByFingerprint(input: {
+    requestFingerprint: string;
+    settlementResponse: unknown;
+    txHash?: string;
+    payer?: string;
+    now?: Date;
+  }): void;
   markConflict(paymentId: string, now?: Date): void;
   markExpired(orderId: string, now?: Date): void;
   getDeliveryForOrder(orderId: string): ReportDeliveryRecord | undefined;
@@ -445,6 +452,48 @@ class SqliteProviderStore implements ProviderStore {
       )
       .run({
         paymentId: input.paymentId,
+        requestFingerprint: input.requestFingerprint,
+        payer: input.payer ?? null,
+        txHash: input.txHash ?? null,
+        settlementResponse: JSON.stringify(input.settlementResponse),
+        updatedAt: now.toISOString(),
+        settledAt: now.toISOString()
+      });
+    this.db
+      .prepare(
+        `update risk_report_orders
+         set status = 'paid',
+             paid_at = coalesce(paid_at, @paidAt)
+         where id = @orderId`
+      )
+      .run({ orderId: order.id, paidAt: now.toISOString() });
+  }
+
+  recordSettledPaymentByFingerprint(input: {
+    requestFingerprint: string;
+    settlementResponse: unknown;
+    txHash?: string;
+    payer?: string;
+    now?: Date;
+  }): void {
+    const now = input.now ?? new Date();
+    const order = this.getOrderByFingerprint(input.requestFingerprint);
+    if (!order) {
+      throw new Error("settled payment order is missing");
+    }
+
+    this.db
+      .prepare(
+        `update payment_records
+         set status = 'settled',
+             payer = coalesce(@payer, payer),
+             tx_hash = coalesce(@txHash, tx_hash),
+             settlement_response = @settlementResponse,
+             updated_at = @updatedAt,
+             settled_at = @settledAt
+         where request_fingerprint = @requestFingerprint`
+      )
+      .run({
         requestFingerprint: input.requestFingerprint,
         payer: input.payer ?? null,
         txHash: input.txHash ?? null,

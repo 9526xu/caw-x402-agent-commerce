@@ -53,6 +53,8 @@ export type PaymentAuditSummary =
       transaction?: string;
       settlement?: {
         network?: string;
+        txId?: string;
+        tx_id?: string;
         transaction?: string;
         payer?: string;
       };

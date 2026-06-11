@@ -408,6 +408,8 @@ function orderStatusResponse(
     },
     settlement: settledPayment
       ? {
+          txId: settledPayment.txHash,
+          tx_id: settledPayment.txHash,
           txHash: settledPayment.txHash,
           payer: settledPayment.payer,
           settledAt: settledPayment.settledAt

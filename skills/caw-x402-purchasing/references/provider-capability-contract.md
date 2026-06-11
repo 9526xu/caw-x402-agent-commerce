@@ -46,6 +46,8 @@ Expected response shape:
     "payee": "Fxvz..."
   },
   "settlement": {
+    "txId": "0xabc...",
+    "tx_id": "0xabc...",
     "txHash": "0xabc...",
     "payer": "0x0000...00aa",
     "settledAt": "2026-06-09T..."

@@ -114,7 +114,12 @@ describe("runConsumerPrecheckTask", () => {
       );
       const audit = JSON.parse(await readFile(result.auditPath, "utf8")) as {
         pact: { status: string; credential: string; pactId: string };
-        payment: { status: string; paymentId: string; paymentProof: string; settlement: { transaction: string } };
+        payment: {
+          status: string;
+          paymentId: string;
+          paymentProof: string;
+          settlement: { txId: string; tx_id: string; transaction: string };
+        };
         validation: { status: string };
         report: { hash: string; riskLevel: string };
       };
@@ -124,7 +129,7 @@ describe("runConsumerPrecheckTask", () => {
       expect(audit.payment).toMatchObject({
         status: "settled",
         paymentProof: "available_redacted",
-        settlement: { transaction: "0xsettled" }
+        settlement: { txId: "0xsettled", tx_id: "0xsettled", transaction: "0xsettled" }
       });
       expect(audit.payment.paymentId).toMatch(/^pay_/);
       expect(audit.validation).toMatchObject({ status: "passed" });
