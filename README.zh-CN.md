@@ -174,7 +174,9 @@ npm run skill:precheck -- \
 
 - [桌面端 demo 录屏](./demo/demo.mp4)
 - [移动端 demo 录屏](./demo/demo_mobile.MP4)
+- [CAW 钱包交易截图](./demo/transaction-screenshot.png)
 - [Solana Devnet 交易哈希 / Solscan](https://solscan.io/tx/3UCmerxaLzXYzzSuBXw3hr19W717N5zn792ig6LD1pcgxUT5Hd8P7fMtcwP6ncMdEdK8wyJAagfPkfkN8S3QdF9n?cluster=devnet)
+- Agent / CAW wallet 地址：`7kuW3nm9Yw7c3SAQEZpBsyVgNywpabJekeXjKuYt2Z4b`
 
 ## 与“实现一个 Agent”的区别
 

@@ -45,26 +45,21 @@
 - README: `README.md`
 - 中文说明：`README.zh-CN.md`
 - Demo 视频：`demo/demo.mp4`、`demo/demo_mobile.MP4`
-- Demo evidence: `demo/README.md`
+- Demo evidence: `demo/README.md`、`demo/transaction-screenshot.png`
 - CAW 关键代码：`agents/src/consumer/caw.ts`、`skills/caw-x402-purchasing/scripts/purchase-with-caw-fetch.mjs`
 - CAW / x402 配置说明：`backend/.env.example`
 - 测试网：Solana Devnet
 - Transaction Hash: `3UCmerxaLzXYzzSuBXw3hr19W717N5zn792ig6LD1pcgxUT5Hd8P7fMtcwP6ncMdEdK8wyJAagfPkfkN8S3QdF9n`
-- Agent Wallet 地址：提交前建议从 CAW Wallet / Solscan 交易详情 / 脱敏 audit evidence 中确认后补充，避免把 provider payee 或 facilitator fee payer 误写成 Agent Wallet。
+- Agent Wallet 地址：`7kuW3nm9Yw7c3SAQEZpBsyVgNywpabJekeXjKuYt2Z4b`
 
 ## 截止前必须完成
 
-1. 确认 Agent Wallet 地址。
-   - 不要把 provider payee、Facilitator fee payer 或 token ATA 当作 Agent Wallet。
-   - 最稳妥来源是 CAW 钱包页面、Pact / tx 记录、或脱敏 audit evidence。
-   - 确认后补到 `README.md` 的 `Demo Evidence` 和提交页。
-
-2. 准备提交页文案。
+1. 准备提交页文案。
    - 标题建议：`CAW x402 Agent Commerce: Safe x402 Purchasing for Existing Agent Runtimes`
    - 一句话：`A reusable CAW-backed purchasing skill and executor that lets existing agents inspect x402 quotes, request least-privilege wallet authorization, execute scoped payments, recover delivery, and produce redacted audit evidence.`
    - 强调：CAW 是资金授权边界，不是装饰性集成。
 
-3. 最后检查 GitHub 页面。
+2. 最后检查 GitHub 页面。
    - README 顶部能快速说明 Agentic Commerce 场景。
    - `Demo Evidence` 能直接打开录屏和 Solscan。
    - public repo 中没有 CAW credential、pact-scoped API key、raw payment payload、private key、seed phrase 或 reusable payment proof。

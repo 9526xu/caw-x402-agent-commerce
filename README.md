@@ -125,8 +125,10 @@ Do not run a live payment flow unless the operator has given an end-to-end purch
 
 - [Desktop demo recording](./demo/demo.mp4)
 - [Mobile demo recording](./demo/demo_mobile.MP4)
+- [CAW wallet transaction screenshot](./demo/transaction-screenshot.png)
 - [Solana Devnet transaction on Solscan](https://solscan.io/tx/3UCmerxaLzXYzzSuBXw3hr19W717N5zn792ig6LD1pcgxUT5Hd8P7fMtcwP6ncMdEdK8wyJAagfPkfkN8S3QdF9n?cluster=devnet)
 - Network: Solana Devnet
+- Agent / CAW wallet address: `7kuW3nm9Yw7c3SAQEZpBsyVgNywpabJekeXjKuYt2Z4b`
 - Token: USDC
 - Amount: 0.005 USDC
 - CAW / x402 implementation entrypoints:
