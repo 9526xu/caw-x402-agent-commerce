@@ -34,6 +34,73 @@ Agent Runtime 负责理解用户意图、读取 skill、决定是否需要购买
 
 本项目负责确定性支付执行：provider capability discovery、x402 quote parsing、付款约束校验、provider status recovery、CAW Pact plan、scoped payment、delivery validation 和 audit record。
 
+## 交互流程
+
+```mermaid
+sequenceDiagram
+  participant User as User / Operator
+  participant Agent as Agent Runtime
+  participant Skill as caw-x402-purchasing Skill
+  participant Exec as Buyer Executor
+  participant Provider as x402 Provider
+  participant CAW as Cobo Agentic Wallet
+  participant Fac as x402 Facilitator
+
+  User->>Agent: 购买指定 paid resource，给出预算和约束
+  Agent->>Skill: 读取购买流程和安全规则
+  Skill->>Provider: GET /llms.txt
+  Provider-->>Skill: provider manifest / recovery capabilities
+  Skill->>Provider: GET /risk-report?address=... without payment proof
+  Provider-->>Skill: HTTP 402 + x402 quote + request fingerprint
+  Skill->>Provider: GET /orders/status?fingerprint=...
+  Provider-->>Skill: payment_required / paid / delivered / expired
+  Skill->>Exec: 校验 amount / token / network / payee / resource
+  Exec-->>Agent: quote、status、最小权限 Pact plan
+  Agent-->>User: 展示授权摘要
+  User->>CAW: 在 Cobo Wallet 批准 CAW Pact
+  Exec->>CAW: 使用 approved Pact 执行 x402 payment
+  CAW->>Provider: paid retry with payment proof
+  Provider->>Fac: verify / settle
+  Fac-->>Provider: settlement result
+  Provider-->>Exec: paid resource result
+  Exec->>Exec: validate delivery + write redacted audit
+  Agent-->>User: 返回结果和脱敏审计摘要
+```
+
+## 核心原理
+
+这个项目把一次 Agent 付款拆成三个边界：
+
+- **Agent 决策边界**：Agent 读取用户意图、provider manifest 和 x402 quote，只负责判断“是否应该买、是否符合约束、下一步该做什么”。
+- **CAW 授权边界**：用户不是把完整钱包交给 Agent，而是在 Cobo Wallet 里批准一个最小权限 Pact。Pact 限定 chain、token、payee、amount、次数和时间窗口。
+- **Provider 交付边界**：x402 payment 只证明付款，Provider 仍然负责 order status、delivery、recovery 和可审计状态。
+
+因此安全策略不是“让 Agent 自动花钱”，而是：
+
+```text
+先让 Agent 看懂 quote
+  -> 再让用户批准最小权限 Pact
+  -> 最后只在 Pact 范围内付款
+  -> 付款后优先恢复交付结果
+  -> 全程留下脱敏 audit evidence
+```
+
+状态流：
+
+```text
+requested
+-> manifest_checked
+-> quoted
+-> provider_status_checked
+-> intent_planned
+-> pact_submitted
+-> pact_approved
+-> payment_executed
+-> delivered / delivery_recovered
+-> validated
+-> audited
+```
+
 ## 项目模块
 
 - `backend/`: seller-side x402 付费资源 provider，当前示例资源是 `GET /risk-report?address=...`。
@@ -103,6 +170,12 @@ npm run skill:precheck -- \
 5. Agent Runtime 读取 `skills/caw-x402-purchasing`，由 skill 驱动 quote review、status recovery、Pact planning、payment、delivery validation 和 redacted audit evidence。
 6. 对端到端购买请求，Agent 在 quote/status/policy 检查通过后提交 CAW Pact 请求，并提醒 operator 到 Cobo Wallet 批准。Cobo Wallet 里的 Pact 批准才是资金授权。Pact active 后，如果 quote、policy 和 provider status 没有变化，Agent 再使用这个已批准 Pact 执行付款，不再要求聊天里重复确认。
 
+## Demo Evidence
+
+- [桌面端 demo 录屏](./demo/demo.mp4)
+- [移动端 demo 录屏](./demo/demo_mobile.MP4)
+- [Solana Devnet 交易哈希 / Solscan](https://solscan.io/tx/3UCmerxaLzXYzzSuBXw3hr19W717N5zn792ig6LD1pcgxUT5Hd8P7fMtcwP6ncMdEdK8wyJAagfPkfkN8S3QdF9n?cluster=devnet)
+
 ## 与“实现一个 Agent”的区别
 
 这个项目不把重点放在调用 LLM SDK 实现一个新的 Agent loop。Codex、Claude Code、Cursor 等现有 runtime 已经能完成意图理解、工具选择和用户交互。
@@ -145,3 +218,4 @@ CAW x402 Agent Commerce:
 - [Implementation plan](./docs/design/caw-x402-agent-commerce-implementation-plan.md)
 - [Operator runbook](./docs/operator-runbook.md)
 - [Live-test evidence](./docs/live-test-evidence.md)
+- [黑客松提交检查清单](./docs/submission-guide.zh-CN.md)

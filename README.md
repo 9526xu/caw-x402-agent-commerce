@@ -19,6 +19,14 @@ The project shows how an existing agent runtime such as Codex or Claude Code can
 
 The current example paid resource is `GET /risk-report?address=...`. It exists to demonstrate the commerce flow; the reusable project boundary is the purchasing capability.
 
+## Hackathon Fit
+
+- Agent + funds scenario: an existing agent runtime buys an x402 paid resource from a provider.
+- Real funds execution: the demo executes a Solana Devnet USDC x402 payment instead of stopping at a mock authorization screen.
+- CAW critical path: Cobo Agentic Wallet is the funds authorization and execution boundary. The agent requests a least-privilege CAW Pact, waits for wallet approval, then pays only through that approved Pact.
+- Safety value: CAW scopes wallet access by chain, token, destination address, amount, transaction count, and time window; the project adds quote review, provider-status recovery, duplicate-payment guard, and redacted audit evidence around that wallet boundary.
+- Runnable prototype: the repo includes a local provider, buyer executor, reusable purchasing skill, browser demo console, automated checks, and recorded desktop/mobile demos.
+
 ## Architecture
 
 ```text
@@ -31,6 +39,39 @@ User / Operator
   -> CAW Pact-scoped wallet action
   -> delivery validation + redacted audit
 ```
+
+## How It Works
+
+```mermaid
+sequenceDiagram
+  participant User as User / Operator
+  participant Agent as Agent Runtime
+  participant Skill as caw-x402-purchasing Skill
+  participant Provider as x402 Provider
+  participant CAW as Cobo Agentic Wallet
+  participant Fac as x402 Facilitator
+
+  User->>Agent: Request a paid resource with budget constraints
+  Agent->>Skill: Read workflow and safety rules
+  Skill->>Provider: Fetch manifest and unpaid quote
+  Provider-->>Skill: HTTP 402 + x402 payment requirement
+  Skill->>Provider: Check order status by fingerprint
+  Provider-->>Skill: payment_required / paid / delivered / expired
+  Skill-->>Agent: Quote, status, policy result, Pact plan
+  Agent-->>User: Show authorization summary
+  User->>CAW: Approve least-privilege CAW Pact
+  Skill->>CAW: Execute scoped x402 payment with approved Pact
+  CAW->>Provider: Paid retry with payment proof
+  Provider->>Fac: Verify and settle
+  Provider-->>Skill: Deliver paid resource result
+  Skill-->>Agent: Validate delivery and write redacted audit evidence
+```
+
+The trust boundary is split across three layers:
+
+- The agent decides whether the x402 quote matches the user's intent and constraints.
+- CAW Pact approval scopes the wallet action by chain, token, payee, amount, transaction count, and time window.
+- The provider owns order status, settlement handling, delivery, recovery, and audit-friendly state.
 
 ## Quick Start
 
@@ -80,6 +121,21 @@ Do not run a live payment flow unless the operator has given an end-to-end purch
 5. The agent runtime reads `skills/caw-x402-purchasing` and lets the skill drive quote review, status recovery, Pact planning, payment, delivery validation, and redacted audit evidence.
 6. For an end-to-end purchase request, the agent submits the CAW Pact request after quote/status/policy checks pass, then tells the operator to approve it in Cobo Wallet. Cobo Wallet approval is the funds authorization; after the Pact is active, the agent uses the approved Pact for payment unless the quote, policy, or provider status changes.
 
+## Demo Evidence
+
+- [Desktop demo recording](./demo/demo.mp4)
+- [Mobile demo recording](./demo/demo_mobile.MP4)
+- [Solana Devnet transaction on Solscan](https://solscan.io/tx/3UCmerxaLzXYzzSuBXw3hr19W717N5zn792ig6LD1pcgxUT5Hd8P7fMtcwP6ncMdEdK8wyJAagfPkfkN8S3QdF9n?cluster=devnet)
+- Network: Solana Devnet
+- Token: USDC
+- Amount: 0.005 USDC
+- CAW / x402 implementation entrypoints:
+  - `skills/caw-x402-purchasing/SKILL.md`
+  - `skills/caw-x402-purchasing/scripts/purchase-with-caw-fetch.mjs`
+  - `agents/src/consumer/caw.ts`
+  - `backend/src/provider/routes.ts`
+- Key configuration: `backend/.env.example` documents `PROVIDER_PAY_TO_ADDRESS`, `X402_NETWORK`, `X402_PRICE_USDC`, `CAW_WALLET_ID`, `CAW_AGENT_CREDENTIAL`, and `CAW_X402_PAYMENT_HEADER_COMMAND`.
+
 ## Safety Rules
 
 - Quote first, pay later.
@@ -95,3 +151,4 @@ Do not run a live payment flow unless the operator has given an end-to-end purch
 - [Implementation plan](./docs/design/caw-x402-agent-commerce-implementation-plan.md)
 - [Operator runbook](./docs/operator-runbook.md)
 - [Live-test evidence](./docs/live-test-evidence.md)
+- [Chinese submission checklist](./docs/submission-guide.zh-CN.md)
