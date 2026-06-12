@@ -1,3 +1,5 @@
+const RECIPIENT_READINESS_TIMEOUT_MS = 10000;
+
 export async function checkRecipientReadiness(payment, parsedArgs) {
   if (!payment || !payment.network?.startsWith("solana:")) {
     return { status: "not_applicable", reason: "recipient token-account readiness only applies to Solana quotes" };
@@ -12,6 +14,7 @@ export async function checkRecipientReadiness(payment, parsedArgs) {
     const response = await fetch(rpcUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(RECIPIENT_READINESS_TIMEOUT_MS),
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -34,13 +37,19 @@ export async function checkRecipientReadiness(payment, parsedArgs) {
           : "Payee has no token account for the quoted Solana asset; x402 verify may fail with InvalidAccountData."
     };
   } catch (error) {
+    const reason =
+      error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")
+        ? `recipient readiness check timed out after ${RECIPIENT_READINESS_TIMEOUT_MS}ms`
+        : error instanceof Error
+          ? error.message
+          : "recipient readiness check failed";
     return {
       status: "unknown",
       network: payment.network,
       rpcUrl,
       payee: payment.payTo,
       asset: payment.asset,
-      reason: error instanceof Error ? error.message : "recipient readiness check failed"
+      reason
     };
   }
 }

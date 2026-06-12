@@ -22,7 +22,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DemoConfig {
   return {
     port: parsePort(env.PORT),
     providerBaseUrl: env.PROVIDER_BASE_URL ?? "http://localhost:4021",
-    providerPayToAddress: env.PROVIDER_PAY_TO_ADDRESS ?? "Fxvz4gTxj2NMECVDD4XM3d5BGfMSv2mViyh4JFHh6oKk",
+    providerPayToAddress: env.PROVIDER_PAY_TO_ADDRESS ?? "BNw9NEygWXuxjMzDCwy6kPFVqkqWeYqUyiYTAszVwK5k",
     x402Network: env.X402_NETWORK ?? "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
     x402PriceUsdc: env.X402_PRICE_USDC ?? "0.005",
     x402TokenSymbol: env.X402_TOKEN_SYMBOL ?? "USDC",
