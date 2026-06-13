@@ -16,6 +16,35 @@
 
 `caw-x402-agent-commerce` 提供的就是这层能力。
 
+## 交互示例
+
+```text
+User:
+Buy the risk report for 0x0000000000000000000000000000000000000001
+with a max budget of 0.005 USDC.
+
+Agent:
+  OK Provider manifest checked
+  OK x402 quote received: 0.005 USDC on Solana Devnet
+  OK payee、token、network、resource 和 max price 均匹配用户约束
+  OK Provider status checked: payment_required
+  -> 已申请 one-payment、least-privilege scope 的 CAW Pact
+
+用户在 Cobo Wallet 中批准 Pact。
+
+Agent:
+  OK Pact active
+  OK x402 payment executed
+  OK Delivery received and validated
+  OK Redacted audit evidence written
+
+Result:
+  Risk report delivered
+  Paid: 0.005 USDC
+  Network: Solana Devnet
+  Audit: agents/audits/...
+```
+
 ## 方案概览
 
 ```text

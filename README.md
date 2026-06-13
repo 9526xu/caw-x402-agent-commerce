@@ -27,6 +27,35 @@ The current example paid resource is `GET /risk-report?address=...`. It exists t
 - Safety value: CAW scopes wallet access by chain, token, destination address, amount, transaction count, and time window; the project adds quote review, provider-status recovery, duplicate-payment guard, and redacted audit evidence around that wallet boundary.
 - Runnable prototype: the repo includes a local provider, buyer executor, reusable purchasing skill, browser demo console, automated checks, and recorded desktop/mobile demos.
 
+## Interaction Example
+
+```text
+User:
+Buy the risk report for 0x0000000000000000000000000000000000000001
+with a max budget of 0.005 USDC.
+
+Agent:
+  OK Provider manifest checked
+  OK x402 quote received: 0.005 USDC on Solana Devnet
+  OK Payee, token, network, resource, and max price match user constraints
+  OK Provider status checked: payment_required
+  -> CAW Pact requested with one-payment, least-privilege scope
+
+User approves the Pact in Cobo Wallet.
+
+Agent:
+  OK Pact active
+  OK x402 payment executed
+  OK Delivery received and validated
+  OK Redacted audit evidence written
+
+Result:
+  Risk report delivered
+  Paid: 0.005 USDC
+  Network: Solana Devnet
+  Audit: agents/audits/...
+```
+
 ## Architecture
 
 ```text
